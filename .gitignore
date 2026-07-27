@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+venv/
+.venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Environment / secrets
+.env
+.env.*
+
+# Model / cache artifacts
+*.pt
+*.onnx
+*.bin
+models/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# CONFIDENTIAL
+team_docs/
+
+# 실험 — 결과 보고서(.md)와 재현 스크립트(.py)는 저장소에 넣는다.
+# ⚠️ `experiments/`로 통째로 무시하면 git이 디렉터리 안으로 들어가지 않아
+#    하위 파일을 `!`로 되살릴 수 없다. 반드시 `experiments/*` 형태로 쓸 것.
+experiments/*
+!experiments/*.py
+!experiments/results/
+experiments/results/*
+!experiments/results/*.md
+
+# 🔒 음성 파일은 절대 저장소에 넣지 않는다 (유출 시 딥페이크 등 악용 위험).
+#    위 `!` 예외보다 뒤에 둬서 무슨 일이 있어도 오디오는 제외되게 한다.
+experiments/audio/
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg

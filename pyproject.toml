@@ -1,0 +1,25 @@
+[project]
+name = "devdemangle"
+version = "0.1.0"
+description = "음성인식·번역이 뭉갠 개발 용어를 되돌리는 라이브러리"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+dependencies = [
+    "faster-whisper>=1.2.1",
+    "pyahocorasick>=2.3.1",
+    "rapidfuzz>=3.14",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+translate = ["transformers>=5.0", "torch>=2.13", "sentencepiece>=0.2", "sacremoses>=0.1"]
+cuda = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12==9.*"]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

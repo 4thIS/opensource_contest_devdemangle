@@ -1,0 +1,80 @@
+# 씨앗 용어집 (1주차).
+#
+# canonical = 표준형. 보정의 목표이자 출력 형태. **공식 표기를 따른다** (GitHub, Python).
+# aliases   = STT가 깨뜨린 형태. 지금 값은 전부 "이렇게 깨질 것 같다"는 추측이다.
+#             리스크 1 녹음에서 실제로 뭐가 나오는지 보고 고친다 — 그게 이 프로젝트의 핵심 방법론.
+#
+# 1~20번은 `experiments/audio/녹음목록.md`의 리스크 1 실험 용어와 같다.
+# 21번(의존성 주입)만 실험 목록에 없다. `translations` 필드를 쓰는 유일한 예시라
+# 설계 문서의 "translations 기본값은 원문 유지" 절이 이걸 근거로 삼는다. 지우지 말 것.
+
+version: 1
+terms:
+  - canonical: GitHub
+    aliases: [깃허브, 깃헙]
+
+  - canonical: repository
+    aliases: [리포지토리, 레포지토리, 레파지토리]
+    # "레포"는 짧아서 오탐 위험이 크다. 실측 후 판단.
+
+  - canonical: JSON
+    aliases: [제이슨, 제이손]
+    # "제이슨"은 사람 이름(Jason)과 동음이다. 오탐률을 반드시 측정할 것.
+
+  - canonical: Vue
+    aliases: [브이유]
+    # "뷰"는 일반 명사와 충돌이 심해 일단 제외. 오탐률 측정 후 재검토
+
+  - canonical: npm install
+    aliases: [엔피엠 인스톨, 엠피엠 인스톨]
+
+  - canonical: git commit
+    aliases: [깃 커밋, 짓 커밋]
+
+  - canonical: README
+    aliases: [리드미, 리드미 파일]
+
+  - canonical: Docker
+    aliases: [도커, 독커]
+
+  - canonical: TypeScript
+    aliases: [타입스크립트, 타이프스크립트]
+
+  - canonical: SQL
+    aliases: [에스큐엘, 시퀄]
+
+  - canonical: console.log
+    aliases: [콘솔 로그, 콘솔로그, 콘솔 닷 로그]
+    # 점(.)이 있어 STT가 두 단어로 쪼갤 가능성이 크다.
+
+  - canonical: CSS
+    aliases: [씨에스에스, 시에스에스]
+
+  - canonical: REST API
+    aliases: [레스트 에이피아이, 레스트 API]
+
+  - canonical: pull request
+    aliases: [풀 리퀘스트, 풀리퀘스트]
+
+  - canonical: localhost
+    aliases: [로컬호스트, 로컬 호스트]
+
+  - canonical: AWS
+    aliases: [에이더블유에스, 아마존 웹서비스]
+
+  - canonical: VS Code
+    aliases: [브이에스 코드, 브이에스코드, 비주얼 스튜디오 코드]
+
+  - canonical: FastAPI
+    aliases: [패스트에이피아이, 패스트API]
+
+  - canonical: Python
+    aliases: [파이썬, 파이선]
+
+  - canonical: React
+    aliases: [리액트, 리엑트]
+
+  - canonical: 의존성 주입
+    aliases: [디펜던시 인젝션]
+    translations:
+      en: dependency injection
