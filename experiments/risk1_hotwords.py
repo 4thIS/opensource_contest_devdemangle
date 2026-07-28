@@ -50,7 +50,7 @@ def found_terms(text: str, terms: list[str]) -> list[str]:
 def run_condition(model, entries, label: str, hotwords: str | None):
     """한 조건(hotwords 유무)으로 전체를 전사하고 결과를 모은다."""
     total = hits = 0
-    rows = []  # (file, terms, found, text)
+    rows = []  # (file, speaker, terms, found, text)
     print(f"=== {label} ===")
     for e in entries:
         path = AUDIO_DIR / e["file"]
@@ -65,17 +65,42 @@ def run_condition(model, entries, label: str, hotwords: str | None):
         print(f"  [{mark}] {e['file']}: {text}")
         if len(got) != len(e["terms"]):
             print(f"          놓침: {sorted(set(e['terms']) - set(got))}")
-        rows.append((e["file"], e["terms"], got, text))
+        rows.append((e["file"], e.get("speaker", "?"), e["terms"], got, text))
     rate = hits / total * 100 if total else 0.0
     print(f"  >>> 용어 인식률: {hits}/{total} = {rate:.1f}%\n")
     return {"label": label, "hits": hits, "total": total, "rate": rate, "rows": rows}
+
+
+def per_speaker_diff(off, on):
+    """화자별로 hotwords 없음→있음 인식률을 집계한다 (편향 대응 근거).
+
+    '3명이 나눠 녹음했다'를 사람 기억이 아니라 실행 로그로 증명한다.
+    """
+    def collect(res):
+        d = {}
+        for _file, spk, terms, got, _text in res["rows"]:
+            d.setdefault(spk, {"total": 0, "hit": 0})
+            d[spk]["total"] += len(terms)
+            d[spk]["hit"] += len(got)
+        return d
+
+    a, b = collect(off), collect(on)
+    print("=== 화자별 인식률 (없음 → 있음) ===")
+    for spk in sorted(a):
+        o = a[spk]["hit"] / a[spk]["total"] * 100 if a[spk]["total"] else 0
+        n = b[spk]["hit"] / b[spk]["total"] * 100 if b[spk]["total"] else 0
+        print(
+            f"  화자 {spk}: {a[spk]['hit']}/{a[spk]['total']} = {o:.1f}%"
+            f"  →  {b[spk]['hit']}/{b[spk]['total']} = {n:.1f}%  ({n - o:+.1f}%p)"
+        )
+    print(f"  화자 수: {len(a)}명\n")
 
 
 def per_term_diff(off, on):
     """용어별로 hotwords 없음→있음에서 인식이 어떻게 바뀌었는지 (발표·보고서용)."""
     def collect(res):
         d = {}
-        for _file, terms, got, _text in res["rows"]:
+        for _file, _spk, terms, got, _text in res["rows"]:
             for t in terms:
                 d.setdefault(t, {"total": 0, "hit": 0})
                 d[t]["total"] += 1
@@ -111,9 +136,10 @@ def main():
 
     entries = load_manifest()
     present = [e for e in entries if (AUDIO_DIR / e["file"]).exists()]
-    speakers = "알 수 없음"  # 녹음 담당이 나뉘면 여기 기록
+    speakers = sorted({e.get("speaker", "?") for e in present})
 
-    print(f"매니페스트 {len(entries)}개 중 녹음 존재 {len(present)}개\n")
+    print(f"매니페스트 {len(entries)}개 중 녹음 존재 {len(present)}개")
+    print(f"화자 {len(speakers)}명: {', '.join(speakers)}\n")
     if not present:
         print("⚠️ 녹음 파일이 하나도 없습니다. experiments/audio/에 seed_*.wav를 넣으세요.")
         print("   목록: experiments/audio/녹음목록.md")
@@ -131,6 +157,7 @@ def main():
     on = run_condition(model, present, "hotwords 있음", hotwords_str)
 
     per_term_diff(off, on)
+    per_speaker_diff(off, on)
 
     diff = on["rate"] - off["rate"]
     print("\n" + "=" * 50)
@@ -144,9 +171,10 @@ def main():
         verdict = "효과 없음 → 접근법 2로 전환 (실험했으나 효과 없어 제외)"
     print(f"판정: {verdict}")
     print("=" * 50)
-    print(f"\n녹음 파일 {len(present)}개 / 화자: {speakers}")
+    print(f"\n녹음 파일 {len(present)}개 / 화자 {len(speakers)}명: {', '.join(speakers)}")
     print("결과를 experiments/results/risk1.md에 기록하세요 (숫자 + 화자 수 필수).")
-    print("⚠️ 혼자 녹음한 파일럿이면 risk1_pilot.md로, 최종 판정은 3인 녹음 후.")
+    if len(speakers) < 2:
+        print("⚠️ 화자가 1명이면 파일럿입니다. 최종 판정은 여러 명 녹음 후.")
 
 
 if __name__ == "__main__":
