@@ -2,7 +2,7 @@
 
 hotwords 없음 / 있음 두 조건에서 같은 오디오를 전사하고, 표준형 용어가 얼마나
 살아남는지 비교한다. 차이가 +5%p 이상이면 hotwords.py를 만든다.
-판정 기준·배경: team_docs/10_리스크.md §2
+판정 기준(+5%p)은 측정 전에 확정했다. 결과: `experiments/results/risk1.md`
 
 용법:
     uv run --extra cuda python experiments/risk1_hotwords.py

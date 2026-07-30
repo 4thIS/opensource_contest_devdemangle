@@ -28,7 +28,7 @@ SRC_EXTS = {".m4a", ".mp3", ".wav", ".flac", ".ogg", ".aac", ".wma", ".mp4"}
 
 
 def find_ffmpeg(explicit: str | None) -> str:
-    """ffmpeg 실행 경로를 찾는다. 순서: --ffmpeg → PATH → 강의 도구 폴더."""
+    """ffmpeg 실행 경로를 찾는다. 순서: --ffmpeg → PATH."""
     if explicit:
         if Path(explicit).exists():
             return explicit
@@ -37,12 +37,6 @@ def find_ffmpeg(explicit: str | None) -> str:
     found = shutil.which("ffmpeg")
     if found:
         return found
-
-    fallback = Path(
-        "C:/Users/kdohy/OneDrive/바탕 화면/개발 프로젝트/강의 mp3 텍스트화/ffmpeg.exe"
-    )
-    if fallback.exists():
-        return str(fallback)
 
     sys.exit("[오류] ffmpeg를 찾을 수 없습니다. --ffmpeg로 ffmpeg.exe 경로를 지정하세요.")
 
