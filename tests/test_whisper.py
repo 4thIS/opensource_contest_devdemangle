@@ -40,7 +40,7 @@ def test_transcribe_joins_segment_texts(monkeypatch):
 
 
 def test_transcribe_passes_hotwords_and_korean_vad(monkeypatch):
-    """hotwords·language='ko'·vad_filter가 실제로 faster-whisper로 넘어간다 (S-STT-02/05)."""
+    """hotwords·language='ko'·vad_filter가 실제로 faster-whisper로 넘어간다."""
     _, fake_model = _install_fake_faster_whisper(monkeypatch, [])
 
     from devdemangle.stt.whisper import WhisperSTT

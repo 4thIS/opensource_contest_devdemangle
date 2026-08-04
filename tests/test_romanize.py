@@ -4,7 +4,7 @@ from devdemangle.romanize import phonetic_key, romanize
 def test_romanize_basic_syllables():
     """한글 음절을 초성·중성·종성 자모로 분해해 로마자로 잇는다.
 
-    ㄹ은 음절 첫머리에서 r (표기 정확도가 아니라 편집거리가 목표 — 기술근거 §7-2).
+    ㄹ은 음절 첫머리에서 r. 표기 정확도가 아니라 편집거리를 가깝게 하는 게 목표라 그대로 둔다.
     """
     assert romanize("라다시") == "radasi"
 
@@ -18,7 +18,7 @@ def test_romanize_passes_non_hangul_through():
 def test_final_hieut_does_not_crash():
     """종성 리스트가 27개면 ㅎ받침에서 IndexError로 터진다. 28개여야 한다.
 
-    (실제로 27개로 만들었다가 이 테스트에서 잡은 버그 — 기술근거 §7-1)
+    (실제로 27개로 만들었다가 이 테스트에서 잡은 버그다.)
     """
     assert romanize("좋다") == "jotda"
 
@@ -33,19 +33,19 @@ def test_romanize_final_consonant():
 
 
 def test_phonetic_key_korean_and_english_converge():
-    """한글 음차와 영어 원어가 같은 키로 수렴해야 매칭이 성립한다 (설계 §19)."""
+    """한글 음차와 영어 원어가 같은 키로 수렴해야 퍼지 매칭이 성립한다."""
     assert phonetic_key("레디스") == phonetic_key("redis")
 
 
-def test_phonetic_key_documented_values():
-    """설계 문서의 실측 예시 값."""
+def test_phonetic_key_known_values():
+    """실제 음차↔원어 쌍에서 확인한 키 값."""
     assert phonetic_key("레디스") == "ledis"
     assert phonetic_key("redis") == "ledis"
     assert phonetic_key("라다시") == "ladasi"
 
 
 def test_phonetic_key_unifies_r_and_l():
-    """한국어는 r/l을 구분하지 않는다 → l로 통일 (기술근거 §7)."""
+    """한국어는 r/l을 구분하지 않는다 → l로 통일."""
     assert phonetic_key("rust") == phonetic_key("lust")
 
 

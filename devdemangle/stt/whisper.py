@@ -2,7 +2,7 @@
 
 ⚠️ import 순서: `setup_cuda_dlls()`를 faster_whisper import 전에 호출해야 한다.
 CTranslate2가 검색 플래그 없는 LoadLibrary를 써서, 안 그러면 추론에서
-`cublas64_12.dll not found`로 터진다 (실행·운영 문서 CUDA DLL 절).
+`cublas64_12.dll not found`로 터진다.
 
 그래서 모듈 로드 때 setup_cuda_dlls()를 부르고, faster_whisper import는
 __init__으로 미룬다 — 그 시점엔 PATH가 이미 고쳐져 있다.
@@ -40,16 +40,16 @@ class WhisperSTT:
 
         Args:
             audio: 오디오 파일 경로.
-            hotwords: STT에 힌트로 줄 용어 문자열. 인식 정확도를 높인다 (S-STT-05).
+            hotwords: STT에 힌트로 줄 용어 문자열. 디코더를 편향시켜 개발 용어 인식률을 높인다.
 
         Returns:
             전사 텍스트. 발화 단위 세그먼트를 공백으로 이어붙인다.
         """
         segments, _ = self._model.transcribe(
             str(audio),
-            language="ko",     # S-STT-01: 한국어 전사
-            hotwords=hotwords,  # S-STT-05: 용어 힌트
-            vad_filter=True,    # S-STT-02: 무음 구간 제거
+            language="ko",      # 한국어 고정 — 자동 감지는 짧은 발화에서 자주 틀린다
+            hotwords=hotwords,  # 용어 힌트 (인식률↑)
+            vad_filter=True,    # 무음 구간 제거
         )
         # 세그먼트는 제 나름의 앞뒤 공백을 달고 온다. strip 후 이어붙여 이중 공백을 막는다.
         parts = (s.text.strip() for s in segments)
