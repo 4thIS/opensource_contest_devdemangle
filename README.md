@@ -17,15 +17,26 @@ DevDemangle은 용어집 기반 탐지·보정으로 이런 개발 용어를 표
 
 이 프로젝트는 아래 모델을 실행 시 다운로드해 사용한다. 가중치는 저장소에 포함하지 않는다.
 
-- **Whisper** (OpenAI) — MIT License / 구현: faster-whisper (MIT)
-- **OPUS-MT** (Helsinki-NLP/opus-mt-ko-en) — CC-BY 4.0
-  > Tiedemann, J., & Thottingal, S. (2020). OPUS-MT — Building open translation
-  > services for the World. Proc. of the 22nd EAMT, Lisbon, Portugal.
+- **Whisper** ([openai/whisper](https://github.com/openai/whisper)) —
+  [MIT License](https://github.com/openai/whisper/blob/main/LICENSE) /
+  구현: [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (MIT)
+- **OPUS-MT** ([Helsinki-NLP/opus-mt-ko-en](https://huggingface.co/Helsinki-NLP/opus-mt-ko-en))
+  — 라이선스 표기가 출처마다 다르다.
+  - 우리가 내려받는 Hugging Face 배포본의 모델 카드 표기는
+    [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)이다.
+  - 원 프로젝트 [OPUS-MT](https://github.com/Helsinki-NLP/Opus-MT)는 사전학습 모델을
+    [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)으로 안내한다.
+  - 어느 쪽이 맞다고 단정하지 않고 **더 엄격한 쪽(CC-BY 4.0)의 출처 표기 의무를 따른다.**
+    아래가 그 표기다.
+
+  > Tiedemann, J., & Thottingal, S. (2020).
+  > [OPUS-MT — Building open translation services for the World](https://aclanthology.org/2020.eamt-1.61/).
+  > *Proc. of the 22nd EAMT*, Lisbon, Portugal.
 
 ## 라이선스
 
 이 저장소의 코드는 **MIT License**다 ([LICENSE](LICENSE)).
 
-모델 가중치는 저장소에 포함하지 않고 **실행 시 다운로드**한다. OPUS-MT 가중치는 CC-BY 4.0으로
-출처 표기 의무가 있으나(위 "사용 모델" 참고), 저장소에 번들하지 않으므로 그 조건이 코드 배포물에
-얽히지 않는다 — 코드 라이선스는 MIT로 유지된다.
+모델 가중치는 저장소에 포함하지 않고 **실행 시 다운로드**한다. 배포물에 가중치를 넣지 않으므로
+모델 쪽 조건(Apache-2.0의 고지 유지, CC-BY 4.0의 출처 표기)이 코드 배포물에 얽히지 않는다 —
+코드 라이선스는 MIT로 유지된다. 출처 표기는 위 "사용 모델"에 두었다.
