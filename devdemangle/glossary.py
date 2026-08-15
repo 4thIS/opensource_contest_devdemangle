@@ -124,22 +124,22 @@ def _validate(data: object) -> tuple[list[dict], list[str]]:
 
         # 규칙 4
         canonical = raw.get("canonical")
+        canonical_valid = isinstance(canonical, str) and bool(canonical.strip())
         if canonical is None:
             errors.append(f"{where}: canonical 키가 없습니다")
-            continue
-        if not isinstance(canonical, str) or not canonical.strip():
+        elif not canonical_valid:
             errors.append(f"{where}: canonical이 비어 있거나 문자열이 아닙니다")
-            continue
 
-        # 규칙 7 — 대소문자 무시
-        key = canonical.lower()
-        if key in canonical_owner:
-            errors.append(
-                f"{where}: canonical 중복 '{canonical}' "
-                f"(terms[{canonical_owner[key]}]와 같습니다)"
-            )
-        else:
-            canonical_owner[key] = i
+        # 규칙 7 — 대소문자 무시 (canonical이 유효할 때만 등록 가능)
+        if canonical_valid:
+            key = canonical.lower()
+            if key in canonical_owner:
+                errors.append(
+                    f"{where}: canonical 중복 '{canonical}' "
+                    f"(terms[{canonical_owner[key]}]와 같습니다)"
+                )
+            else:
+                canonical_owner[key] = i
 
         # 규칙 5
         aliases = raw.get("aliases")
@@ -174,7 +174,8 @@ def _validate(data: object) -> tuple[list[dict], list[str]]:
             else:
                 alias_owner[akey] = i
 
-        ok.append(raw)
+        if canonical_valid:
+            ok.append(raw)
 
     # 규칙 8 — 항목을 다 본 뒤에야 전체 canonical 집합을 알 수 있다
     for i, raw in enumerate(raw_terms):

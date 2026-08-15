@@ -286,3 +286,28 @@ def test_error_message_includes_term_index(tmp_path):
     )
     with pytest.raises(GlossaryError, match=r"terms\[1\]"):
         Glossary.from_yaml(path)
+
+
+def test_errors_accumulate_within_a_single_term(tmp_path):
+    """한 항목이 여러 규칙을 어기면 그것들도 전부 보고된다."""
+    path = write_yaml(
+        tmp_path,
+        'version: 1\nterms:\n  - aliases: "브이유"\n',
+    )
+    with pytest.raises(GlossaryError) as exc:
+        Glossary.from_yaml(path)
+
+    message = str(exc.value)
+    assert "canonical" in message
+    assert "aliases" in message
+    assert "2건" in message
+
+
+def test_rule8_detects_collision_with_later_canonical(tmp_path):
+    """규칙 8이 두 번 순회하는 이유 — 뒤에 나오는 canonical과도 충돌을 잡아야 한다."""
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: Ruby\n    aliases: [python]\n  - canonical: Python\n",
+    )
+    with pytest.raises(GlossaryError, match="canonical과 충돌"):
+        Glossary.from_yaml(path)
