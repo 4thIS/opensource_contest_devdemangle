@@ -1,0 +1,172 @@
+"""탐지 — 등록 용어(Aho-Corasick)와 미등록 식별자(정규식)를 찾는다."""
+
+from pathlib import Path
+
+import pytest
+
+from devdemangle import Glossary, Match, Method, Term
+from devdemangle.detect import detect
+
+TERMS = Path(__file__).resolve().parent.parent / "data" / "terms.yaml"
+
+
+@pytest.fixture
+def glossary() -> Glossary:
+    return Glossary([Term(canonical="Docker", aliases=("도커",))])
+
+
+@pytest.fixture(scope="module")
+def seed_glossary() -> Glossary:
+    return Glossary.from_yaml(TERMS)
+
+
+def test_finds_canonical_term(glossary):
+    """표준형이 그대로 있으면 찾는다."""
+    assert detect("Docker 재시작할게", glossary) == [
+        Match(0, 6, "Docker", "Docker", Method.EXACT, 1.0)
+    ]
+
+
+def test_alias_reports_canonical_but_keeps_matched_text(glossary):
+    """별칭을 찾으면 term은 표준형, matched는 입력에 있던 글자 그대로다.
+
+    보정은 term으로 갈아끼우고, matched는 "무엇이 깨져 있었는지"를 남기는 값이다.
+    """
+    assert detect("도커 재시작할게", glossary) == [
+        Match(0, 2, "Docker", "도커", Method.EXACT, 1.0)
+    ]
+
+
+def test_ignores_match_starting_mid_token(glossary):
+    """토큰 중간에서 시작하는 매치는 버린다.
+
+    "윈도커널"의 1~3번째 글자가 "도커"다. 시작 경계를 안 보면 이런 게 다 걸린다.
+    """
+    assert detect("윈도커널 문제야", glossary) == []
+
+
+def test_ignores_match_with_unknown_tail(glossary):
+    """뒤에 남는 꼬리가 조사가 아니면 버린다.
+
+    "Dockerfile"은 Docker가 아니라 그 자체로 다른 이름이다.
+    """
+    assert detect("Dockerfile 수정했어", glossary) == []
+
+
+def test_allows_particle_tail(glossary):
+    """꼬리가 조사면 통과시키고, 매치는 조사를 뺀 구간이다.
+
+    한국어는 조사가 붙어 한 어절이 된다. 이걸 안 보면 실측 전사에서
+    "Docker를"·"리액트랑" 같은 게 통째로 안 잡힌다.
+    """
+    assert detect("도커를 재시작할게", glossary) == [
+        Match(0, 2, "Docker", "도커", Method.EXACT, 1.0)
+    ]
+
+
+def test_matches_ignoring_case():
+    """대소문자는 무시한다.
+
+    실측 전사에 "sql 문을"·"vs 코드로"처럼 소문자로 나온 게 있다.
+    같은 글자를 다르게 적었을 뿐이라 탐지가 받아야 한다.
+    """
+    glossary = Glossary([Term(canonical="SQL")])
+    assert detect("sql 문을 수정해야 합니다", glossary) == [
+        Match(0, 3, "SQL", "sql", Method.EXACT, 1.0)
+    ]
+
+
+@pytest.mark.parametrize("tail", ["에서는", "로도", "까지는", "부터는", "에도", "보다는"])
+def test_allows_stacked_particles(glossary, tail):
+    """조사는 겹쳐 붙는다. 결합형을 하나씩 나열하면 목록이 곱셈으로 커진다.
+
+    격조사 뒤에 보조사가 오는 게 기본형이고, 보조사끼리도 겹친다("까지는").
+    """
+    assert detect(f"도커{tail} 그래요", glossary) == [
+        Match(0, 2, "Docker", "도커", Method.EXACT, 1.0)
+    ]
+
+
+def test_finds_unregistered_identifier_by_regex(glossary):
+    """용어집에 없어도 식별자 모양이면 찾는다.
+
+    번역·보정이 식별자를 건드리면 코드가 깨진다. 용어집을 100개로 늘려도
+    남의 프로젝트 이름까지 담을 수는 없어서, 모양으로 잡는 경로가 따로 있다.
+    term은 표준형이 없으므로 matched와 같다.
+    """
+    assert detect("reactRouter 수정했어", glossary) == [
+        Match(0, 11, "reactRouter", "reactRouter", Method.REGEX, 0.8)
+    ]
+
+
+@pytest.mark.parametrize(
+    "identifier,rest",
+    [
+        ("user_id", " 컬럼 추가했어"),
+        ("--no-cache", " 옵션 줬어"),
+        ("-v", " 붙여서 돌려봐"),
+    ],
+)
+def test_regex_also_finds_snake_case_and_flags(glossary, identifier, rest):
+    """식별자 모양은 camelCase만이 아니다. snake_case와 명령행 플래그도 같다."""
+    assert detect(identifier + rest, glossary) == [
+        Match(0, len(identifier), identifier, identifier, Method.REGEX, 0.8)
+    ]
+
+
+def test_keeps_overlapping_matches():
+    """겹치는 후보를 골라내지 않고 전부 내보낸다.
+
+    겹침 해소는 보정 쪽 resolve_overlaps 한 곳에만 둔다. 탐지가 미리 정리하면
+    같은 판단이 두 군데 생기고, 퍼지 결과와 함께 다시 정렬해야 할 때 근거가 없어진다.
+    """
+    glossary = Glossary([Term(canonical="README", aliases=("리드미", "리드미 파일"))])
+
+    found = detect("리드미 파일 수정해 뒀어요", glossary)
+
+    assert {(m.start, m.end) for m in found} == {(0, 3), (0, 6)}
+
+
+def test_matches_are_sorted_by_position():
+    """긴 것이 앞에 오도록 위치 순으로 정렬해 내보낸다.
+
+    겹치는 후보가 나란히 붙어 있어야 보정 쪽에서 묶어 보기 쉽다.
+    """
+    glossary = Glossary([Term(canonical="README", aliases=("리드미", "리드미 파일"))])
+
+    found = detect("리드미 파일 수정해 뒀어요", glossary)
+
+    assert [(m.start, m.end) for m in found] == [(0, 6), (0, 3)]
+
+
+def test_empty_glossary_still_finds_identifiers():
+    """용어집이 비어도 정규식 경로는 살아 있어야 한다.
+
+    Aho-Corasick은 패턴이 하나도 없을 때 만들어지지 않는다. 그걸 안 막으면
+    용어집 없이 식별자만 보호하려는 사용이 통째로 죽는다.
+    """
+    assert detect("reactRouter 수정했어", Glossary([])) == [
+        Match(0, 11, "reactRouter", "reactRouter", Method.REGEX, 0.8)
+    ]
+
+
+# 리스크 1 녹음에서 STT가 실제로 뱉은 문장 → 그 문장에서 나와야 할 표준형.
+# 전부 조사나 문장부호가 붙어 있어서, 어절이 정확히 일치할 때만 잡는 방식으로는
+# 통째로 놓치던 것들이다. 규칙이 후퇴하면 여기가 먼저 깨진다.
+MEASURED_SENTENCES = [
+    ("console.log를 한번 확인해볼게요", {"console.log"}),
+    ("리액트랑 타입스트리트 같이 쓰고 있어요", {"React", "TypeScript"}),
+    ("Docker를 배포했어요", {"Docker"}),
+    ("파일선으로 작성했어", {"Python"}),
+    ("로컬 호스트로 들어가면 돼요", {"localhost"}),
+    ("sql 문을 수정해야 합니다", {"SQL"}),
+    ("재시작할게 도커.", {"Docker"}),
+    ("이거 리듬이?", {"README"}),
+]
+
+
+@pytest.mark.parametrize("sentence,expected", MEASURED_SENTENCES)
+def test_finds_terms_in_measured_transcripts(seed_glossary, sentence, expected):
+    """실측 전사문에서 용어를 찾는다."""
+    found = {m.term for m in detect(sentence, seed_glossary) if m.method is Method.EXACT}
+    assert expected <= found
