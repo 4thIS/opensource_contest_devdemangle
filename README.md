@@ -25,10 +25,13 @@ print(result.text)     # "Python 스크립트 짰어요"
 print(result.matches)  # [Match(original='파이썬', canonical='Python', start=0, end=3)]
 ```
 
-용어집은 `data/terms.yaml`을 쓴다. 자체 용어집으로 보정하려면 `load_glossary()`로 불러와 `correct(text, terms=...)`에 넘긴다.
+용어집은 `devdemangle/data/terms.yaml`을 쓴다. 자체 용어집으로 보정하려면 `load_glossary()`로 불러와 `correct(text, terms=...)`에 넘긴다.
 
-> **알려진 한계 (v1):** alias 바로 뒤에 조사가 붙은 문장(`"파일선으로 작성했어"` 등)은 아직 보정되지 않는다.
-> 자세한 내용은 `docs/superpowers/specs/2026-08-02-term-correction-design.md`의 "알려진 한계" 절 참고.
+> **알려진 한계 (v1)** — 매칭은 토큰 경계가 양쪽 다 정확히 맞을 때만 일어난다. 오탐을 최소화하려고 일부러 좁게 잡았다.
+>
+> - **조사가 alias 뒤에 붙으면 못 잡는다** (`"파일선으로 작성했어"`, `"기터벳의 리포지토리"`). alias가 토큰 전체와 같아야 매칭된다.
+> - **구두점이 붙은 토큰도 못 잡는다** (`"뷰,"`, `"Docker."`). 구두점 스트리핑은 다음 이터레이션 대상.
+> - 용어집에 **없는** 변형(`Python` → `"파일선"` 류)은 이 모듈의 스코프가 아니다 — 소리 유사도 기반 보정이 따로 맡는다.
 
 ## 상태
 
