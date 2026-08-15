@@ -54,3 +54,12 @@ def test_longer_overlapping_alias_wins():
 def test_empty_text_returns_empty_result():
     result = correct("", terms=BASE_TERMS)
     assert result == CorrectionResult(text="", matches=[])
+
+
+def test_default_glossary_corrects_known_alias():
+    """terms 인자 없이 기본 용어집(data/terms.yaml)으로 동작하는지 확인."""
+    from devdemangle import correct as public_correct
+
+    result = public_correct("파이썬 좋아해요")
+    assert result.text == "Python 좋아해요"
+    assert result.matches[0].canonical == "Python"
