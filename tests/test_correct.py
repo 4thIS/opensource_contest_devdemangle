@@ -43,6 +43,13 @@ def test_alias_followed_by_particle_is_not_replaced():
     assert result.matches == []
 
 
+def test_alias_inside_larger_token_is_not_replaced():
+    """알려진 한계 테스트와 대칭: 이번엔 alias가 토큰 뒤쪽에 붙어 있어 시작 경계가 안 맞는 경우."""
+    result = correct("우리깃허브 봤어요", terms=BASE_TERMS)
+    assert result.text == "우리깃허브 봤어요"
+    assert result.matches == []
+
+
 def test_longer_overlapping_alias_wins():
     short = Term(canonical="AAA", aliases=["가"])
     long = Term(canonical="BBB", aliases=["가 나"])
@@ -56,8 +63,14 @@ def test_empty_text_returns_empty_result():
     assert result == CorrectionResult(text="", matches=[])
 
 
+def test_empty_terms_list_passes_text_through_unchanged():
+    result = correct("깃허브 봤어요", terms=[])
+    assert result.text == "깃허브 봤어요"
+    assert result.matches == []
+
+
 def test_default_glossary_corrects_known_alias():
-    """terms 인자 없이 기본 용어집(data/terms.yaml)으로 동작하는지 확인."""
+    """terms 인자 없이 기본 용어집(devdemangle/data/terms.yaml)으로 동작하는지 확인."""
     from devdemangle import correct as public_correct
 
     result = public_correct("파이썬 좋아해요")

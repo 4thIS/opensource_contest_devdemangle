@@ -44,13 +44,15 @@ def correct(text: str, terms: list[Term] | None = None) -> CorrectionResult:
     """텍스트 안의 alias를 canonical로 교체한다.
 
     alias는 공백 기준 토큰 경계에서 시작·끝나야 매칭된다 (토큰 중간에
-    우연히 걸리는 부분 매칭은 제외). terms 생략 시 기본 용어집(data/terms.yaml)을
+    우연히 걸리는 부분 매칭은 제외). terms 생략 시 기본 용어집(devdemangle/data/terms.yaml)을
     쓰고 자동자를 캐싱한다.
     """
     if not text:
         return CorrectionResult(text="", matches=[])
 
     automaton = build_automaton(terms) if terms is not None else _default_automaton()
+    if len(automaton) == 0:
+        return CorrectionResult(text=text, matches=[])
 
     token_spans = [(m.start(), m.end()) for m in _TOKEN_RE.finditer(text)]
     token_starts = {s for s, _ in token_spans}
