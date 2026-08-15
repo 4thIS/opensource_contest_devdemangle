@@ -17,7 +17,7 @@ def write_yaml(tmp_path: Path, body: str) -> Path:
 
 
 def test_construct_without_file():
-    """파일 없이 만들 수 있어야 코어 테스트가 빨라진다 (C-IND-03)."""
+    """파일 없이 만들 수 있어야 코어 테스트가 빨라진다."""
     g = Glossary([Term("lodash", ("라다시",))])
     assert len(g) == 1
 
@@ -38,7 +38,7 @@ def test_canonicals_preserves_original_spelling():
 
 
 def test_get_ignores_case():
-    """C-DET-03이 대소문자 무시 탐지를 요구하므로 조회도 맞춘다."""
+    """탐지가 대소문자를 무시하므로 조회도 맞춘다."""
     g = Glossary([Term("Python", ("파이썬",))])
     assert g.get("Python").canonical == "Python"
     assert g.get("python").canonical == "Python"
@@ -54,7 +54,7 @@ def test_get_returns_none_for_unknown():
 
 
 def test_translation_defaults_to_canonical():
-    """T-GLOS-01 — 고정 번역어가 없으면 원문 유지가 기본값이다."""
+    """고정 번역어가 없으면 원문 유지가 기본값이다. Vue는 "뷰"가 되면 안 된다."""
     g = Glossary([Term("Vue", ("브이유",))])
     assert g.translation_for("Vue", "ko") == "Vue"
     assert g.translation_for("Vue", "en") == "Vue"
@@ -67,7 +67,7 @@ def test_translation_uses_fixed_value_when_present():
 
 
 def test_translation_for_unknown_term_returns_input():
-    """등록되지 않은 표준형도 예외 없이 원문을 돌려준다 (T-TRA-04와 같은 원칙)."""
+    """등록되지 않은 표준형도 예외 없이 원문을 돌려준다."""
     g = Glossary([Term("Vue")])
     assert g.translation_for("등록안된용어", "en") == "등록안된용어"
 
@@ -101,7 +101,7 @@ terms:
 
 
 def test_from_yaml_allows_term_without_optional_fields(tmp_path):
-    """C-GLOS-03 — 별칭이 없는 용어도 등록 가능하다."""
+    """별칭이 없는 용어도 등록 가능하다."""
     path = write_yaml(
         tmp_path,
         """
@@ -215,7 +215,7 @@ def test_rule6_translations_keys_and_values_must_be_strings(tmp_path):
 
 
 def test_rule7_duplicate_canonical_is_rejected(tmp_path):
-    """C-GLOS-06."""
+    """표준형이 중복되면 로딩할 때 거부한다."""
     path = write_yaml(
         tmp_path,
         "version: 1\nterms:\n  - canonical: Docker\n  - canonical: Docker\n",

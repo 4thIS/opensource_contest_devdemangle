@@ -1,6 +1,6 @@
 """용어집 로딩 — YAML을 읽어 Term 목록으로 만든다.
 
-이 프로젝트엔 DB가 없다. 용어집이 데이터 전부이며 성능을 좌우한다 (설계 03 §II).
+이 프로젝트엔 DB가 없다. 용어집이 데이터 전부이며 성능을 좌우한다.
 """
 
 from collections.abc import Iterable, Iterator
@@ -24,14 +24,14 @@ class GlossaryError(ValueError):
 class Glossary:
     """용어집. 검증된 진입점은 from_yaml이다.
 
-    __init__은 입력을 신뢰한다 (파일 없이 테스트하기 위한 통로, C-IND-03).
+    __init__은 입력을 신뢰한다. 파일 없이 용어집을 만들기 위한 통로다.
     대소문자만 다른 canonical을 직접 넣으면 조회에서는 마지막 것만 남지만
     len·canonicals는 둘 다 센다. from_yaml은 규칙 7이 이를 거부한다.
     """
 
     def __init__(self, terms: Iterable[Term]) -> None:
         self._terms = tuple(terms)
-        # 조회는 대소문자를 무시한다 (C-DET-03). 저장은 원문 그대로다.
+        # 조회는 대소문자를 무시한다. 저장은 원문 그대로다 — canonical이 공식 표기이자 출력 형태다.
         self._by_canonical = {t.canonical.lower(): t for t in self._terms}
 
     @classmethod
@@ -71,7 +71,10 @@ class Glossary:
         return self._by_canonical.get(canonical.lower())
 
     def translation_for(self, canonical: str, lang: str) -> str:
-        """고정 번역어를 돌려준다. 없으면 원문 유지가 기본값이다 (C-GLOS-05)."""
+        """고정 번역어를 돌려준다. 없으면 원문 유지가 기본값이다.
+
+        대부분의 개발 용어는 번역하면 안 되므로, 예외만 용어집에 적는다.
+        """
         term = self.get(canonical)
         if term is None:
             return canonical
