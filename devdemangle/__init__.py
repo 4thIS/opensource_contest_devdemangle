@@ -2,6 +2,7 @@
 
 from devdemangle.correct import CorrectionResult, correct
 from devdemangle.glossary import Glossary, GlossaryError
+from devdemangle.pipeline import PipelineResult, run
 from devdemangle.types import Match, Method, Span, Term
 
 __all__ = [
@@ -10,8 +11,10 @@ __all__ = [
     "GlossaryError",
     "Match",
     "Method",
+    "PipelineResult",
     "Span",
     "Term",
     "correct",
+    "run",
 ]
 __version__ = "0.1.0"
