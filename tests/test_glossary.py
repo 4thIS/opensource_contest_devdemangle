@@ -131,3 +131,158 @@ def test_malformed_yaml_raises_glossary_error(tmp_path):
     path = write_yaml(tmp_path, "version: 1\nterms: [불균형\n")
     with pytest.raises(GlossaryError):
         Glossary.from_yaml(path)
+
+
+# --- 검증 규칙 --------------------------------------------------------
+
+
+def test_rule1_top_level_must_be_mapping(tmp_path):
+    path = write_yaml(tmp_path, "- 그냥\n- 리스트\n")
+    with pytest.raises(GlossaryError, match="최상위"):
+        Glossary.from_yaml(path)
+
+
+def test_rule2_version_must_be_present(tmp_path):
+    path = write_yaml(tmp_path, "terms:\n  - canonical: Vue\n")
+    with pytest.raises(GlossaryError, match="version"):
+        Glossary.from_yaml(path)
+
+
+def test_rule2_version_must_match_schema(tmp_path):
+    path = write_yaml(tmp_path, "version: 2\nterms:\n  - canonical: Vue\n")
+    with pytest.raises(GlossaryError, match="version"):
+        Glossary.from_yaml(path)
+
+
+def test_rule3_terms_must_be_a_list(tmp_path):
+    path = write_yaml(tmp_path, "version: 1\nterms: 문자열\n")
+    with pytest.raises(GlossaryError, match="terms"):
+        Glossary.from_yaml(path)
+
+
+def test_rule4_canonical_is_required(tmp_path):
+    path = write_yaml(tmp_path, "version: 1\nterms:\n  - aliases: [뷰]\n")
+    with pytest.raises(GlossaryError, match="canonical"):
+        Glossary.from_yaml(path)
+
+
+def test_rule4_canonical_must_not_be_blank(tmp_path):
+    path = write_yaml(tmp_path, 'version: 1\nterms:\n  - canonical: "   "\n')
+    with pytest.raises(GlossaryError, match="canonical"):
+        Glossary.from_yaml(path)
+
+
+def test_rule5_aliases_must_be_a_list(tmp_path):
+    path = write_yaml(tmp_path, "version: 1\nterms:\n  - canonical: Vue\n    aliases: 브이유\n")
+    with pytest.raises(GlossaryError, match="aliases"):
+        Glossary.from_yaml(path)
+
+
+def test_rule5_alias_must_not_be_blank(tmp_path):
+    path = write_yaml(tmp_path, 'version: 1\nterms:\n  - canonical: Vue\n    aliases: ["", 브이유]\n')
+    with pytest.raises(GlossaryError, match="aliases"):
+        Glossary.from_yaml(path)
+
+
+def test_rule6_translations_must_be_a_mapping(tmp_path):
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: Vue\n    translations: [en, ko]\n",
+    )
+    with pytest.raises(GlossaryError, match="translations"):
+        Glossary.from_yaml(path)
+
+
+def test_rule7_duplicate_canonical_is_rejected(tmp_path):
+    """C-GLOS-06."""
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: Docker\n  - canonical: Docker\n",
+    )
+    with pytest.raises(GlossaryError, match="중복"):
+        Glossary.from_yaml(path)
+
+
+def test_rule7_duplicate_canonical_ignores_case(tmp_path):
+    """Python과 python이 별개로 등록되면 어느 쪽으로 보정할지 정할 수 없다."""
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: Python\n  - canonical: python\n",
+    )
+    with pytest.raises(GlossaryError, match="중복"):
+        Glossary.from_yaml(path)
+
+
+def test_rule8_alias_must_not_collide_with_other_canonical(tmp_path):
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: Python\n  - canonical: Ruby\n    aliases: [python]\n",
+    )
+    with pytest.raises(GlossaryError, match="canonical과 충돌"):
+        Glossary.from_yaml(path)
+
+
+def test_rule8_allows_alias_equal_to_own_canonical(tmp_path):
+    """자기 자신의 canonical과 같은 alias는 무의미하지만 모호하지는 않다."""
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: Vue\n    aliases: [Vue]\n",
+    )
+    g = Glossary.from_yaml(path)
+    assert len(g) == 1
+
+
+def test_rule9_same_alias_in_two_terms_is_rejected(tmp_path):
+    """'깃'이 git과 GitHub 양쪽에 있으면 어느 표준형으로 보정할지 정할 수 없다."""
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: git\n    aliases: [깃]\n"
+        "  - canonical: GitHub\n    aliases: [깃]\n",
+    )
+    with pytest.raises(GlossaryError, match="alias '깃'"):
+        Glossary.from_yaml(path)
+
+
+def test_rule10_unknown_key_is_rejected(tmp_path):
+    """'aliases'를 'alias'로 잘못 적으면 별칭이 조용히 사라진다."""
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: Docker\n    alias: [도커]\n",
+    )
+    with pytest.raises(GlossaryError, match="알 수 없는 키"):
+        Glossary.from_yaml(path)
+
+
+# --- 오류 수집 --------------------------------------------------------
+
+
+def test_all_errors_are_reported_together(tmp_path):
+    """고치고-다시돌리기를 반복하지 않도록 전부 모아 보고한다."""
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n"
+        "  - canonical: Docker\n"
+        "  - canonical: Docker\n"          # 규칙 7 위반
+        "  - canonical: Vue\n"
+        "    aliases: 브이유\n"             # 규칙 5 위반
+        "  - canonical: Python\n"
+        "    alias: [파이썬]\n",            # 규칙 10 위반
+    )
+    with pytest.raises(GlossaryError) as exc:
+        Glossary.from_yaml(path)
+
+    message = str(exc.value)
+    assert "3건" in message
+    assert "중복" in message
+    assert "aliases" in message
+    assert "알 수 없는 키" in message
+
+
+def test_error_message_includes_term_index(tmp_path):
+    """어느 항목이 문제인지 알아야 100개 중에서 찾을 수 있다."""
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: Vue\n  - canonical: Docker\n    alias: [도커]\n",
+    )
+    with pytest.raises(GlossaryError, match=r"terms\[1\]"):
+        Glossary.from_yaml(path)
