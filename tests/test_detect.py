@@ -162,6 +162,10 @@ MEASURED_SENTENCES = [
     ("sql 문을 수정해야 합니다", {"SQL"}),
     ("재시작할게 도커.", {"Docker"}),
     ("이거 리듬이?", {"README"}),
+    ("GitHub에서의 리포지터리 만들었어.", {"GitHub", "repository"}),
+    ("npm install부터 진행해야지.", {"npm install"}),
+    ("타입 스트릿을 같이 쓰고 있어요.", {"TypeScript"}),
+    ("Git 커뮤니타가 걸렸어요.", {"git commit"}),
 ]
 
 
@@ -170,3 +174,91 @@ def test_finds_terms_in_measured_transcripts(seed_glossary, sentence, expected):
     """실측 전사문에서 용어를 찾는다."""
     found = {m.term for m in detect(sentence, seed_glossary) if m.method is Method.EXACT}
     assert expected <= found
+
+
+def test_finds_terms_in_readme_headline_example(seed_glossary):
+    """README 첫 화면에 적힌 대표 예시가 실제로 동작한다.
+
+    바깥에 내건 예시가 안 되면 그게 제일 먼저 들키는 자리다.
+    실측 전사와 달리 이건 우리가 내세운 목표라, 위 목록과 섞지 않고 따로 둔다.
+    """
+    found = {m.term for m in detect("라다시 디바운스 써서 처리했어요", seed_glossary)}
+    assert {"lodash", "debounce"} <= found
+
+
+# 용어가 문장 끝에 오는 문장. 1주차 코퍼스에는 이런 게 **한 건도 없어서**
+# 녹음을 다시 해도 이 구간은 안 보인다. 손으로 써서 채운다.
+# 시연 대본이 용어를 문장 끝에 두는 구성이라, 여기가 촬영에서 처음 터지면 늦는다.
+SENTENCE_FINAL_FOUND = [
+    ("배포에 쓰는 건 도커.", {"Docker"}),
+    ("프론트는 전부 리액트", {"React"}),
+    ("고친 건 리드미랑 리포지터리.", {"README", "repository"}),
+    ("설정은 로컬 호스트에서만.", {"localhost"}),
+    ("붙일 건 라다시?", {"lodash"}),
+]
+
+# 같은 자리인데 뒤에 서술격이 붙은 것. **일부러 안 잡는다.**
+# "입니다"·"예요"는 조사가 아니라 어미라, 조사 목록에 넣으면 닫힌 집합이라는 전제가 깨진다.
+# 넣을지는 오탐을 재고 정한다 — 그때 이 목록이 판단 근거가 된다.
+SENTENCE_FINAL_NOT_FOUND = [
+    ("컨테이너 도구는 도커입니다.", "Docker"),
+    ("프레임워크는 리액트예요.", "React"),
+    ("언어는 파일선이야.", "Python"),
+    ("빌드는 타입스트리트거든요.", "TypeScript"),
+]
+
+
+@pytest.mark.parametrize("sentence,expected", SENTENCE_FINAL_FOUND)
+def test_finds_terms_at_sentence_end(seed_glossary, sentence, expected):
+    """용어가 문장 끝에 와도 찾는다."""
+    found = {m.term for m in detect(sentence, seed_glossary) if m.method is Method.EXACT}
+    assert expected <= found
+
+
+@pytest.mark.parametrize("sentence,term", SENTENCE_FINAL_NOT_FOUND)
+def test_predicate_ending_is_not_treated_as_particle(seed_glossary, sentence, term):
+    """서술격이 붙으면 못 찾는다 — 알려진 한계이자 의도한 선택이다.
+
+    이 테스트가 깨진다면 누군가 조사 목록에 어미를 넣은 것이다.
+    그 자체가 틀렸다는 게 아니라, 오탐을 재고 나서 할 일이라는 뜻이다.
+    """
+    found = {m.term for m in detect(sentence, seed_glossary) if m.method is Method.EXACT}
+    assert term not in found
+
+
+# 별칭 모양이 나오지만 용어가 아닌 문장. 지금까지 오탐 표본이 전부 개발 대화에서
+# 나와서, 이런 어절은 표본에 들어올 수가 없었다 — 개발 얘기 중엔 뱀도 속편도 안 나온다.
+@pytest.mark.parametrize(
+    "sentence,forbidden",
+    [
+        ("창밖 뷰가 좋아요", "Vue"),            # 별칭 미등록이라 안 걸린다
+        ("리드미컬한 음악이네", "README"),        # 꼬리가 조사가 아니다
+        ("도커피 한 잔 마실래", "Docker"),       # 토큰 중간에서 시작한다
+    ],
+)
+def test_boundary_rules_block_lookalike_words(seed_glossary, sentence, forbidden):
+    """경계 규칙이 막아내는 것들 — 여기는 별칭 문제가 아니다."""
+    found = {m.term for m in detect(sentence, seed_glossary) if m.method is Method.EXACT}
+    assert forbidden not in found
+
+
+@pytest.mark.xfail(strict=True, reason="별칭이 일상어와 동음이라 경계 규칙으로는 못 막는다")
+@pytest.mark.parametrize(
+    "sentence,forbidden",
+    [
+        ("제이슨이 어제 왔어", "JSON"),          # 사람 이름 Jason
+        ("제이슨한테 물어봐", "JSON"),
+        ("그 영화 시퀄이 나온대", "SQL"),         # 속편 sequel
+        ("시퀄은 별로였어", "SQL"),
+        ("파이선은 큰 뱀이야", "Python"),         # 뱀 python
+        ("파이선이 무섭다", "Python"),
+    ],
+)
+def test_homonym_aliases_currently_false_positive(seed_glossary, sentence, forbidden):
+    """동음이의 별칭은 지금 오탐이 난다. 고쳐지면 이 테스트가 먼저 알려준다.
+
+    조사를 떼는 건 제대로 동작한다 — 문제는 떼고 남은 게 진짜 용어가 아니라는 것이다.
+    경계를 조여도 안 풀린다. 별칭을 빼거나 문맥을 봐야 하는 문제다.
+    """
+    found = {m.term for m in detect(sentence, seed_glossary) if m.method is Method.EXACT}
+    assert forbidden not in found

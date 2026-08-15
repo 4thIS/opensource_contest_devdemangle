@@ -23,12 +23,14 @@ IDENTIFIER = re.compile(
     re.VERBOSE,
 )
 
-# 끝 경계를 완화할 때 허용하는 꼬리. 격조사 뒤에 보조사가 붙는 게 기본형이고
-# 보조사끼리도 겹치므로, 결합형을 나열하는 대신 두 층으로 나눠 조합한다.
-CASE_PARTICLES = frozenset(
-    "이 가 을 를 의 에 에서 에게 한테 께 으로 로 와 과 랑 이랑 보다 처럼".split()
+# 끝 경계를 완화할 때 허용하는 꼬리. 조사는 겹쳐 붙으므로 결합형을 나열하지 않고
+# 낱개만 두고 조합한다 — "에서는"·"으로도"·"까지는"을 하나씩 적으면 곱셈으로 커진다.
+PARTICLES = frozenset(
+    """
+    이 가 을 를 의 에 에서 에게 한테 께 으로 로 와 과 랑 이랑 보다 처럼
+    은 는 도 만 까지 부터 마다 조차 밖에
+    """.split()
 )
-AUX_PARTICLES = frozenset("은 는 도 만 까지 부터 마다 조차 밖에".split())
 
 
 def detect(text: str, glossary: Glossary) -> list[Match]:
@@ -103,17 +105,19 @@ def _ends_token(text: str, end: int) -> bool:
 
 
 def _is_particle_tail(tail: str) -> bool:
-    """꼬리를 조사 최대 두 개로 쪼갤 수 있는가. 격조사는 맨 앞에만 온다.
+    """꼬리를 조사 최대 두 개로 쪼갤 수 있는가.
 
-    결합형을 하나씩 나열하면 목록이 곱셈으로 커진다("에서는"·"으로도"·"까지는").
-    두 층으로 나누면 목록은 오히려 줄고 결합형이 저절로 들어온다.
+    처음엔 "격조사는 맨 앞에만 온다"로 제한했는데, 실측 전사의 "GitHub에서의"가
+    거기서 걸렸다. 에서(부사격) 뒤의 의(관형격)도 격조사라 조합이 막혔다.
+    문법 층위로 순서를 정하려던 것을 버리고 낱개 두 개까지로 단순화한다 —
+    "이가" 같은 조합도 통과하지만 그런 어절은 실제로 나오지 않는다.
+
     서술격("입니다"·"예요")은 조사가 아니라 어미라 뺐다. 오탐을 재고 나서 판단한다.
     """
-    if tail in CASE_PARTICLES or tail in AUX_PARTICLES:
+    if tail in PARTICLES:
         return True
     return any(
-        (tail[:i] in CASE_PARTICLES or tail[:i] in AUX_PARTICLES)
-        and tail[i:] in AUX_PARTICLES
+        tail[:i] in PARTICLES and tail[i:] in PARTICLES
         for i in range(1, len(tail))
     )
 
