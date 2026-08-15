@@ -22,6 +22,13 @@ class GlossaryError(ValueError):
 
 
 class Glossary:
+    """용어집. 검증된 진입점은 from_yaml이다.
+
+    __init__은 입력을 신뢰한다 (파일 없이 테스트하기 위한 통로, C-IND-03).
+    대소문자만 다른 canonical을 직접 넣으면 조회에서는 마지막 것만 남지만
+    len·canonicals는 둘 다 센다. from_yaml은 규칙 7이 이를 거부한다.
+    """
+
     def __init__(self, terms: Iterable[Term]) -> None:
         self._terms = tuple(terms)
         # 조회는 대소문자를 무시한다 (C-DET-03). 저장은 원문 그대로다.

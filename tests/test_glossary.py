@@ -144,43 +144,55 @@ def test_rule1_top_level_must_be_mapping(tmp_path):
 
 def test_rule2_version_must_be_present(tmp_path):
     path = write_yaml(tmp_path, "terms:\n  - canonical: Vue\n")
-    with pytest.raises(GlossaryError, match="version"):
+    with pytest.raises(GlossaryError, match="version 키가 없습니다"):
         Glossary.from_yaml(path)
 
 
 def test_rule2_version_must_match_schema(tmp_path):
     path = write_yaml(tmp_path, "version: 2\nterms:\n  - canonical: Vue\n")
-    with pytest.raises(GlossaryError, match="version"):
+    with pytest.raises(GlossaryError, match=r"version이 2입니다"):
         Glossary.from_yaml(path)
 
 
 def test_rule3_terms_must_be_a_list(tmp_path):
     path = write_yaml(tmp_path, "version: 1\nterms: 문자열\n")
-    with pytest.raises(GlossaryError, match="terms"):
+    with pytest.raises(GlossaryError, match="terms가 리스트가 아닙니다"):
+        Glossary.from_yaml(path)
+
+
+def test_rule3_terms_key_is_required(tmp_path):
+    path = write_yaml(tmp_path, "version: 1\n")
+    with pytest.raises(GlossaryError, match="terms 키가 없습니다"):
+        Glossary.from_yaml(path)
+
+
+def test_term_entry_must_be_a_mapping(tmp_path):
+    path = write_yaml(tmp_path, "version: 1\nterms: [문자열]\n")
+    with pytest.raises(GlossaryError, match="매핑이 아닙니다"):
         Glossary.from_yaml(path)
 
 
 def test_rule4_canonical_is_required(tmp_path):
     path = write_yaml(tmp_path, "version: 1\nterms:\n  - aliases: [뷰]\n")
-    with pytest.raises(GlossaryError, match="canonical"):
+    with pytest.raises(GlossaryError, match="canonical 키가 없습니다"):
         Glossary.from_yaml(path)
 
 
 def test_rule4_canonical_must_not_be_blank(tmp_path):
     path = write_yaml(tmp_path, 'version: 1\nterms:\n  - canonical: "   "\n')
-    with pytest.raises(GlossaryError, match="canonical"):
+    with pytest.raises(GlossaryError, match="canonical이 비어 있거나"):
         Glossary.from_yaml(path)
 
 
 def test_rule5_aliases_must_be_a_list(tmp_path):
     path = write_yaml(tmp_path, "version: 1\nterms:\n  - canonical: Vue\n    aliases: 브이유\n")
-    with pytest.raises(GlossaryError, match="aliases"):
+    with pytest.raises(GlossaryError, match="aliases가 리스트가 아닙니다"):
         Glossary.from_yaml(path)
 
 
 def test_rule5_alias_must_not_be_blank(tmp_path):
     path = write_yaml(tmp_path, 'version: 1\nterms:\n  - canonical: Vue\n    aliases: ["", 브이유]\n')
-    with pytest.raises(GlossaryError, match="aliases"):
+    with pytest.raises(GlossaryError, match="aliases에 비어 있거나"):
         Glossary.from_yaml(path)
 
 
@@ -189,7 +201,16 @@ def test_rule6_translations_must_be_a_mapping(tmp_path):
         tmp_path,
         "version: 1\nterms:\n  - canonical: Vue\n    translations: [en, ko]\n",
     )
-    with pytest.raises(GlossaryError, match="translations"):
+    with pytest.raises(GlossaryError, match="translations가 매핑이 아닙니다"):
+        Glossary.from_yaml(path)
+
+
+def test_rule6_translations_keys_and_values_must_be_strings(tmp_path):
+    path = write_yaml(
+        tmp_path,
+        "version: 1\nterms:\n  - canonical: Vue\n    translations:\n      en: 123\n",
+    )
+    with pytest.raises(GlossaryError, match="translations의 키·값은 문자열이어야 합니다"):
         Glossary.from_yaml(path)
 
 
