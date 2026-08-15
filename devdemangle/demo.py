@@ -33,9 +33,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     from devdemangle.glossary import load_glossary
-    from devdemangle.stt import WhisperTranscriber, hotwords_from
+    from devdemangle.hotwords import build as build_hotwords
+    from devdemangle.stt import WhisperTranscriber
 
-    hotwords = None if args.no_hotwords else hotwords_from(load_glossary())
+    hotwords = None if args.no_hotwords else build_hotwords(load_glossary())
     transcriber = WhisperTranscriber(
         model_size=args.model, compute_type=args.compute, hotwords=hotwords
     )

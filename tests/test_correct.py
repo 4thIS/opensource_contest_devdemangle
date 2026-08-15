@@ -76,3 +76,43 @@ def test_default_glossary_corrects_known_alias():
     result = public_correct("파이썬 좋아해요")
     assert result.text == "Python 좋아해요"
     assert result.matches[0].canonical == "Python"
+
+
+def test_lowercase_alias_is_corrected_to_canonical():
+    """Whisper가 소문자로 뱉은 실측 케이스(`sql 문을`)를 잡는다."""
+    sql = Term(canonical="SQL", aliases=["SQL", "에스큐엘"])
+    result = correct("sql 문을 짰어", terms=[sql])
+    assert result.text == "SQL 문을 짰어"
+    assert result.matches == [Match(original="sql", canonical="SQL", start=0, end=3)]
+
+
+def test_already_canonical_is_left_alone():
+    """C-COR-02: 이미 표준형인 것은 건드리지 않는다 (매치로도 잡히지 않는다)."""
+    sql = Term(canonical="SQL", aliases=["SQL", "에스큐엘"])
+    result = correct("SQL 문을 짰어", terms=[sql])
+    assert result.text == "SQL 문을 짰어"
+    assert result.matches == []
+
+
+def test_match_original_keeps_source_casing():
+    """치환은 표준형으로 하되, 무엇을 바꿨는지는 원문 그대로 남긴다."""
+    vscode = Term(canonical="VS Code", aliases=["VS Code", "브이에스 코드"])
+    result = correct("vs code 켰어", terms=[vscode])
+    assert result.text == "VS Code 켰어"
+    assert result.matches[0].original == "vs code"
+
+
+def test_longest_match_wins_even_when_it_starts_later():
+    """겹침 우선순위는 길이가 1순위다. 짧고 앞선 것이 긴 것을 이기면 안 된다."""
+    short = Term(canonical="SHORT", aliases=["가 나"])
+    long = Term(canonical="LONG", aliases=["나 다 라"])
+    result = correct("가 나 다 라", terms=[short, long])
+    assert result.text == "가 LONG"
+    assert result.matches == [Match(original="나 다 라", canonical="LONG", start=2, end=7)]
+
+
+def test_equal_length_overlap_prefers_earlier_start():
+    first = Term(canonical="FIRST", aliases=["가 나"])
+    second = Term(canonical="SECOND", aliases=["나 다"])
+    result = correct("가 나 다", terms=[first, second])
+    assert result.text == "FIRST 다"

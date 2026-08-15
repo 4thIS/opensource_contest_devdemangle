@@ -33,10 +33,11 @@ def run(
     """
     if transcriber is None:
         from devdemangle.glossary import load_glossary
-        from devdemangle.stt import WhisperTranscriber, hotwords_from
+        from devdemangle.hotwords import build as build_hotwords
+        from devdemangle.stt import WhisperTranscriber
 
         glossary = terms if terms is not None else load_glossary()
-        transcriber = WhisperTranscriber(hotwords=hotwords_from(glossary))
+        transcriber = WhisperTranscriber(hotwords=build_hotwords(glossary))
 
     raw = transcriber.transcribe(audio_path)
     result = correct(raw, terms=terms)
