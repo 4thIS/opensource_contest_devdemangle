@@ -9,9 +9,30 @@ DevDemangle은 용어집 기반 탐지·보정으로 이런 개발 용어를 표
 "라다시 디바운스 써서 처리했어요"  →  "lodash debounce 써서 처리했어요"
 ```
 
+## 사용법
+
+```bash
+git clone https://github.com/4thIS/opensource_contest_devdemangle.git
+cd opensource_contest_devdemangle
+uv sync
+```
+
+```python
+from devdemangle import correct
+
+result = correct("파이썬 스크립트 짰어요")
+print(result.text)     # "Python 스크립트 짰어요"
+print(result.matches)  # [Match(original='파이썬', canonical='Python', start=0, end=3)]
+```
+
+용어집은 `data/terms.yaml`을 쓴다. 자체 용어집으로 보정하려면 `load_glossary()`로 불러와 `correct(text, terms=...)`에 넘긴다.
+
+> **알려진 한계 (v1):** alias 바로 뒤에 조사가 붙은 문장(`"파일선으로 작성했어"` 등)은 아직 보정되지 않는다.
+> 자세한 내용은 `docs/superpowers/specs/2026-08-02-term-correction-design.md`의 "알려진 한계" 절 참고.
+
 ## 상태
 
-개발 중 (2026 오픈소스 개발자대회 출품 준비).
+개발 중 (2026 오픈소스 개발자대회 출품 준비). 용어 보정 모듈(`devdemangle.correct`)까지 구현 완료, STT·번역 연동은 다음 단계.
 
 ## 사용 모델
 
