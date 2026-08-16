@@ -1,6 +1,8 @@
 """탐지 — 입력 텍스트에서 용어 위치를 찾는다.
 
-겹침은 해소하지 않는다. 후보를 전부 내보내고 정리는 보정 쪽에서 한 번만 한다.
+detect()는 겹치는 후보를 전부 내보내고, resolve_overlaps()가 그중 하나를 고른다.
+둘을 나눈 이유는 퍼지다 — 소리 유사도 후보가 나중에 합쳐지므로, 탐지 단계에서
+미리 정리하면 그때 되살릴 수 없다. 합친 뒤 resolve_overlaps()를 한 번만 통과시킨다.
 """
 
 import re
@@ -14,9 +16,16 @@ from devdemangle.types import Match, Method
 # "exact보다는 못 믿는다"는 자리표시자다 — 같은 method끼리만 비교해야 한다.
 REGEX_CONFIDENCE = 0.8
 
+# 겹칠 때 어느 method가 이기는가. 등록 용어가 정규식보다, 정규식이 소리 추정보다 앞선다.
+# 신뢰도로 대신할 수 없다 — 퍼지 신뢰도는 실측값이라 0.8을 넘길 수 있는데,
+# 그렇다고 미등록 식별자를 소리 추정이 이기게 둘 수는 없다.
+METHOD_RANK = {Method.EXACT: 0, Method.REGEX: 1, Method.FUZZY: 2}
+
 IDENTIFIER = re.compile(
     r"""
-      --?[a-zA-Z][\w-]*            # 명령행 플래그   --no-cache, -v
+      # 문자 집합을 \w로 쓰지 않는다. \w는 한글도 포함해서 "--force로"의 조사까지
+      # 물고 들어간다 — 용어가 "--force로"가 되면 번역 보호에 조사가 딸려 나간다.
+      --?[a-zA-Z][a-zA-Z0-9-]*     # 명령행 플래그   --no-cache, -v
     | [a-z]+(?:[A-Z][a-z0-9]*)+    # camelCase      reactRouter
     | [a-z0-9]+(?:_[a-z0-9]+)+     # snake_case     user_id
     """,
@@ -39,7 +48,7 @@ def detect(text: str, glossary: Glossary) -> list[Match]:
     등록 용어는 Aho-Corasick으로, 용어집에 없는 식별자는 모양(정규식)으로 잡는다.
     소리 유사도로 찾는 일은 여기서 하지 않는다 — 퍼지는 별도 모듈이다.
 
-    겹치는 후보를 골라내지 않고 전부 돌려준다. 겹침 해소는 보정 쪽 한 곳에만 둔다.
+    겹치는 후보를 골라내지 않고 전부 돌려준다. 고르는 건 resolve_overlaps()의 일이다.
 
     Returns:
         위치 순으로 정렬된 Match 목록. 같은 자리면 긴 것이 앞에 온다.
@@ -73,6 +82,34 @@ def detect(text: str, glossary: Glossary) -> list[Match]:
 
     matches.sort(key=lambda m: (m.start, -(m.end - m.start)))
     return matches
+
+
+def resolve_overlaps(matches: list[Match]) -> list[Match]:
+    """겹치는 후보 중 하나만 남긴다.
+
+    순서는 ①길이 ②method ③신뢰도 ④위치다. 길이가 앞서는 게 중요하다 —
+    "npm install"과 "npm"은 둘 다 exact에 신뢰도 1.0이라 길이를 안 보면
+    짧은 쪽이 남을 수 있다.
+
+    detect()에서 떼어 둔 이유는 퍼지 때문이다. 소리 유사도로 찾은 후보는
+    탐지가 끝난 뒤에 합쳐지는데, 탐지가 미리 정리해 버리면 그때 버린 후보를
+    되살릴 수 없다. **탐지 결과와 퍼지 결과를 합친 다음 여기 한 번만 통과시킨다.**
+
+    맞닿기만 한 것은 겹침이 아니다(끝과 시작이 같은 경우).
+
+    Returns:
+        위치 오름차순. 고를 때 쓴 순서는 결과에 드러나지 않는다.
+    """
+    kept: list[Match] = []
+    for m in sorted(matches, key=_priority):
+        if not any(m.start < k.end and k.start < m.end for k in kept):
+            kept.append(m)
+    return sorted(kept, key=lambda m: m.start)
+
+
+def _priority(m: Match) -> tuple:
+    """겹침에서 이기는 순서. 작을수록 먼저 고른다."""
+    return (-(m.end - m.start), METHOD_RANK[m.method], -m.confidence, m.start)
 
 
 def _starts_token(text: str, start: int) -> bool:

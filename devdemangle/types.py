@@ -12,7 +12,7 @@ from enum import StrEnum
 class Method(StrEnum):
     """용어를 찾아낸 방법.
 
-    겹침이 생겼을 때 어느 매치를 남길지 정하는 1순위 판단 근거다.
+    겹침을 해소할 때 길이 다음으로 보는 근거다(①길이 ②method ③신뢰도 ④위치).
     str을 상속하므로 `span.method == "exact"`로 비교할 수 있다.
     """
 
@@ -39,6 +39,10 @@ class Match:
     """탐지 결과.
 
     ⚠️ start/end는 **입력 텍스트** 기준이다. 보정 후 오프셋은 Span을 쓴다.
+
+    ⚠️ confidence는 같은 method 안에서만 비교할 수 있다. exact는 늘 1.0이고
+    regex는 0.8 고정인데, 그 0.8은 잰 값이 아니라 "exact보다는 못 믿는다"는
+    자리표시자다. 퍼지 0.85가 regex 0.8보다 믿을 만하다는 뜻이 아니다.
     """
 
     start: int

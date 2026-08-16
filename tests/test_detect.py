@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from devdemangle import Glossary, Match, Method, Term
-from devdemangle.detect import detect
+from devdemangle.detect import detect, resolve_overlaps
 
 TERMS = Path(__file__).resolve().parent.parent / "data" / "terms.yaml"
 
@@ -114,11 +114,33 @@ def test_regex_also_finds_snake_case_and_flags(glossary, identifier, rest):
     ]
 
 
+@pytest.mark.parametrize(
+    "identifier,tail",
+    [
+        ("--no-cache", "를"),
+        ("--force", "로"),
+        ("-v", "도"),
+        ("user_id", "를"),
+        ("reactRouter", "에서"),
+    ],
+)
+def test_regex_does_not_swallow_particles(glossary, identifier, tail):
+    """식별자 바로 뒤에 조사가 붙어도 식별자까지만 잡는다.
+
+    조사를 물고 들어가면 term이 "--no-cache를"이 되어 번역 보호에서 조사가
+    영어 문장으로 딸려 나간다. 등록 용어 쪽은 꼬리를 떼는데 정규식 쪽만
+    삼키면 같은 문장에서 두 경로가 다르게 동작한다.
+    """
+    assert detect(identifier + tail, glossary) == [
+        Match(0, len(identifier), identifier, identifier, Method.REGEX, 0.8)
+    ]
+
+
 def test_keeps_overlapping_matches():
     """겹치는 후보를 골라내지 않고 전부 내보낸다.
 
-    겹침 해소는 보정 쪽 resolve_overlaps 한 곳에만 둔다. 탐지가 미리 정리하면
-    같은 판단이 두 군데 생기고, 퍼지 결과와 함께 다시 정렬해야 할 때 근거가 없어진다.
+    고르는 건 resolve_overlaps가 한다. 탐지가 미리 정리하면 나중에 합쳐지는
+    퍼지 후보와 다시 겨룰 때 이미 버린 것을 되살릴 수 없다.
     """
     glossary = Glossary([Term(canonical="README", aliases=("리드미", "리드미 파일"))])
 
@@ -137,6 +159,89 @@ def test_matches_are_sorted_by_position():
     found = detect("리드미 파일 수정해 뒀어요", glossary)
 
     assert [(m.start, m.end) for m in found] == [(0, 6), (0, 3)]
+
+
+def _m(start, end, method=Method.EXACT, confidence=1.0, term="X"):
+    """겹침 규칙만 보는 테스트용 Match. 여기서 중요한 건 좌표·method·신뢰도뿐이다."""
+    return Match(start, end, term, term, method, confidence)
+
+
+def test_resolve_keeps_the_longer_match():
+    """1순위는 길이다. "npm install"과 "npm"이 겹치면 긴 쪽이 남는다."""
+    matches = [_m(0, 11, term="npm install"), _m(0, 3, term="npm")]
+
+    assert resolve_overlaps(matches) == [_m(0, 11, term="npm install")]
+
+
+def test_resolve_prefers_exact_over_regex_at_same_length():
+    """길이가 같으면 method를 본다. 등록 용어가 정규식보다 앞선다."""
+    matches = [
+        _m(0, 7, Method.REGEX, 0.8),
+        _m(0, 7, Method.EXACT, 1.0),
+    ]
+
+    assert resolve_overlaps(matches) == [_m(0, 7, Method.EXACT, 1.0)]
+
+
+def test_resolve_prefers_higher_confidence_within_same_method():
+    """길이도 method도 같으면 신뢰도를 본다.
+
+    퍼지끼리 겹칠 때만 갈리는 경우다 — exact는 전부 1.0이라 여기까지 안 온다.
+    """
+    matches = [
+        _m(0, 3, Method.FUZZY, 0.72, term="Docker"),
+        _m(0, 3, Method.FUZZY, 0.91, term="React"),
+    ]
+
+    assert resolve_overlaps(matches) == [_m(0, 3, Method.FUZZY, 0.91, term="React")]
+
+
+def test_resolve_prefers_earlier_position_when_otherwise_tied():
+    """앞의 셋이 모두 같으면 앞쪽을 남긴다. 순서가 입력에 좌우되면 안 된다."""
+    matches = [_m(4, 7, term="B"), _m(2, 5, term="A")]
+
+    assert resolve_overlaps(matches) == [_m(2, 5, term="A")]
+
+
+def test_resolve_keeps_matches_that_do_not_overlap():
+    """겹치지 않으면 아무것도 버리지 않는다. 맞닿기만 한 것도 겹침이 아니다."""
+    matches = [_m(0, 3, term="A"), _m(3, 6, term="B"), _m(9, 12, term="C")]
+
+    assert resolve_overlaps(matches) == matches
+
+
+def test_resolve_returns_start_ascending():
+    """돌려주는 순서는 위치 오름차순이다.
+
+    고를 때는 길이·method 순으로 보지만 그 순서가 결과에 새어나오면 안 된다.
+    """
+    matches = [_m(8, 11, term="C"), _m(0, 5, term="A"), _m(6, 7, term="B")]
+
+    assert [m.start for m in resolve_overlaps(matches)] == [0, 6, 8]
+
+
+def test_resolve_drops_everything_that_overlaps_the_winner():
+    """이긴 매치와 겹치는 건 전부 버린다. 진 것들끼리 다시 살아나지 않는다."""
+    matches = [_m(0, 10, term="long"), _m(0, 3, term="a"), _m(7, 10, term="b")]
+
+    assert resolve_overlaps(matches) == [_m(0, 10, term="long")]
+
+
+def test_resolve_on_empty_list():
+    """탐지 결과가 비면 빈 목록이다. 용어집이 비었을 때 이 경로로 들어온다."""
+    assert resolve_overlaps([]) == []
+
+
+def test_resolve_after_detect_leaves_one_match_per_position():
+    """탐지 → 해소를 실제로 이어 붙인다.
+
+    detect가 "리드미"와 "리드미 파일"을 둘 다 내보내고 해소가 긴 쪽을 남긴다.
+    """
+    glossary = Glossary([Term(canonical="README", aliases=("리드미", "리드미 파일"))])
+
+    resolved = resolve_overlaps(detect("리드미 파일 수정해 뒀어요", glossary))
+
+    assert [(m.start, m.end) for m in resolved] == [(0, 6)]
 
 
 def test_empty_glossary_still_finds_identifiers():
