@@ -4,41 +4,46 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from devdemangle.correct import Match, correct
-from devdemangle.glossary import Term
+from devdemangle.correct import correct, default_glossary
+from devdemangle.glossary import Glossary
+from devdemangle.hotwords import build as build_hotwords
+from devdemangle.types import Span
 
 
-class Transcriber(Protocol):
-    """음성 파일을 텍스트로 바꾸는 것. 구현체는 stt.WhisperTranscriber."""
+class STT(Protocol):
+    """음성 파일을 텍스트로 바꾸는 것. 구현체는 devdemangle.stt.WhisperSTT."""
 
-    def transcribe(self, audio_path: Path) -> str: ...
+    def transcribe(self, audio: str | Path, hotwords: str | None = None) -> str: ...
 
 
 @dataclass
 class PipelineResult:
     raw: str
     corrected: str
-    matches: list[Match]
+    spans: list[Span]
 
 
 def run(
     audio_path: Path,
-    transcriber: Transcriber | None = None,
-    terms: list[Term] | None = None,
+    stt: STT | None = None,
+    glossary: Glossary | None = None,
 ) -> PipelineResult:
     """음성 → 전사 → 용어 보정.
 
-    transcriber를 생략하면 기본 용어집으로 hotwords를 만든 WhisperTranscriber를
-    쓴다 (모델 로드가 일어나므로 테스트에서는 가짜를 주입한다).
+    hotwords는 용어집에서 만들어 전사할 때 넘긴다 — 같은 용어집이 인식 힌트와
+    보정 기준을 겸하므로 둘이 어긋나지 않는다.
+
+    stt를 생략하면 WhisperSTT를 만든다. 생성 시점에 모델을 올리므로(GPU 필요)
+    필요할 때까지 미룬다 — 테스트는 가짜를 주입해 이 경로를 타지 않는다.
     """
-    if transcriber is None:
-        from devdemangle.glossary import load_glossary
-        from devdemangle.hotwords import build as build_hotwords
-        from devdemangle.stt import WhisperTranscriber
+    terms = glossary if glossary is not None else default_glossary()
+    hotwords = build_hotwords(terms)
 
-        glossary = terms if terms is not None else load_glossary()
-        transcriber = WhisperTranscriber(hotwords=build_hotwords(glossary))
+    if stt is None:
+        from devdemangle.stt import WhisperSTT
 
-    raw = transcriber.transcribe(audio_path)
-    result = correct(raw, terms=terms)
-    return PipelineResult(raw=raw, corrected=result.text, matches=result.matches)
+        stt = WhisperSTT()
+
+    raw = stt.transcribe(audio_path, hotwords=hotwords)
+    result = correct(raw, glossary)
+    return PipelineResult(raw=raw, corrected=result.text, spans=result.spans)
