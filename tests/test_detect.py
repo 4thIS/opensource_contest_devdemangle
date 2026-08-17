@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from devdemangle import Glossary, Match, Method, Term
-from devdemangle.detect import detect, resolve_overlaps
+from devdemangle.detect import detect, is_particle_tail, resolve_overlaps
 
 TERMS = Path(__file__).resolve().parent.parent / "data" / "terms.yaml"
 
@@ -85,6 +85,41 @@ def test_allows_stacked_particles(glossary, tail):
     assert detect(f"도커{tail} 그래요", glossary) == [
         Match(0, 2, "Docker", "도커", Method.EXACT, 1.0)
     ]
+
+
+@pytest.mark.parametrize(
+    "tail,is_particle",
+    [
+        ("를", True),
+        ("에서", True),
+        ("에서는", True),
+        ("에서의", True),
+        ("컴포넌트", False),
+        ("했어요", False),
+        ("입니다", False),
+    ],
+)
+def test_particle_tail_predicate_is_public(tail, is_particle):
+    """조사 판정은 detect 밖에서도 부른다 — 퍼지 탐지가 같은 경계를 써야 한다.
+
+    detect()를 거쳐서만 확인하면 판정 자체의 계약이 안 드러난다. 밖에서
+    쓰는 함수가 됐으니 여기서 직접 고정한다.
+    """
+    assert is_particle_tail(tail) is is_particle
+
+
+@pytest.mark.parametrize("tail", ["", "에서만의"])
+def test_particle_tail_predicate_rejects_at_its_edges(tail):
+    """부르는 쪽이 걸리기 쉬운 두 자리를 못 박아 둔다.
+
+    빈 꼬리는 False다. 조사가 아니라 "조사가 없다"는 뜻이라 판정 대상이 아닌데,
+    어절을 잘라가며 부르는 쪽에서는 꼬리 없는 경우가 먼저 나온다. detect()는
+    그 갈래를 부르기 전에 따로 처리한다.
+
+    조사 세 개는 받지 않는다. 목록을 층으로 나누는 대신 낱개 두 개까지로
+    단순화하면서 "에서만의"가 밖으로 나갔다. 실측에 없어 그대로 뒀다.
+    """
+    assert is_particle_tail(tail) is False
 
 
 def test_finds_unregistered_identifier_by_regex(glossary):

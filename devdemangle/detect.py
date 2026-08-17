@@ -138,11 +138,14 @@ def _ends_token(text: str, end: int) -> bool:
     """
     if end == len(text) or not text[end].isalnum():
         return True
-    return _is_particle_tail(_tail(text, end))
+    return is_particle_tail(_tail(text, end))
 
 
-def _is_particle_tail(tail: str) -> bool:
+def is_particle_tail(tail: str) -> bool:
     """꼬리를 조사 최대 두 개로 쪼갤 수 있는가.
+
+    퍼지 탐지도 같은 판정이 필요해서 공개한다. 목록을 두 벌 두면 한쪽만 고쳤을 때
+    두 모듈이 다르게 동작하고, 그건 문장을 넣어보기 전에는 드러나지 않는다.
 
     처음엔 "격조사는 맨 앞에만 온다"로 제한했는데, 실측 전사의 "GitHub에서의"가
     거기서 걸렸다. 에서(부사격) 뒤의 의(관형격)도 격조사라 조합이 막혔다.
