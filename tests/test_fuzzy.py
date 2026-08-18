@@ -77,8 +77,11 @@ def test_reports_offsets_of_the_input_text():
 
 # --- 실측 기반 회귀 ---
 #
-# 아래 두 벌은 1주차 녹음의 실제 전사에서 나온 것이다. 임계값 0.75가 이 표본에서
-# 정답 10건을 살리고 오탐 0건을 통과시킨다는 것이 이 모듈을 이 값으로 고정한 근거다.
+# 아래 두 벌은 1주차 녹음의 실제 전사에서 나온 것이다. 임계값 0.78이 이 표본에서
+# 정답 6건을 살리고 오탐 0건을 통과시킨다는 것이 이 모듈을 이 값으로 고정한 근거다.
+#
+# 여기 두 벌은 꼬리를 뗀 맨몸 형태다. 조사·문장부호가 붙은 실문장 형태는 아래
+# "조사·문장부호 꼬리" 절에서 따로 다룬다 — 안전 구간은 그쪽 기준으로 잡혀 있다.
 
 _GLOSSARY = Glossary([
     Term("README", ("리드미",)),
@@ -141,10 +144,14 @@ def test_real_glossary_does_not_fire_on_common_words():
 
     "파일은"은 별칭 "파일선"(Python 실측 변형)이 등록되면서 0.67 → 0.77로 올랐다.
     **별칭을 추가하면 재현율은 오르지만 오탐 표면도 같이 넓어진다** — 이 테스트가 그 경계다.
+
+    "라디오"·"다시는"·"다시마"는 lodash 별칭("라다시"·"로다시")이 들어오면서 0.727까지
+    올라온 것들이다. 임계값과 0.05 차이라 "라-다-시" 꼴 별칭을 더 넣으면 여기가 먼저 넘는다.
     """
     glossary = _real_glossary()
 
-    for token in ["파일은", "있어요", "뒀어요", "한번", "그대로인가", "재시작할게"]:
+    for token in ["파일은", "있어요", "뒀어요", "한번", "그대로인가", "재시작할게",
+                  "라디오", "다시는", "다시마"]:
         assert fuzzy_detect(token, glossary) == [], f"{token}에서 오탐"
 
 
@@ -185,3 +192,78 @@ def test_known_limit_multiword_terms_are_missed():
     glossary = Glossary([Term("FastAPI", ("패스트API",))])
 
     assert fuzzy_detect("베스트 API 서버 열었어", glossary) == []
+
+# --- 조사·문장부호 꼬리 ---
+#
+# 실측 전사는 용어를 맨몸으로 뱉지 않는다. "기터벳의"처럼 조사가 붙고, 21문장 중 17개에
+# 마침표가 붙는다. 꼬리는 소리 키에 그대로 섞여 들어가 점수를 0.05~0.17 깎는데,
+# 임계값 여유는 0.02였다. 즉 맨몸으로 잰 임계값은 실문장에서 성립하지 않는다.
+
+
+def test_finds_term_that_carries_a_particle():
+    """조사가 붙어도 찾는다.
+
+    "기터벳의"는 실측 전사에 있는 형태다. 통째로 재면 0.706이라 임계값에 못 미쳐
+    후보로 나오지도 않는다. 조사를 뗀 "기터벳"으로 재야 0.800이 나온다.
+    """
+    glossary = Glossary([Term("GitHub", ("깃허브",))])
+
+    matches = fuzzy_detect("기터벳의 리포지토리 만들었어?", glossary)
+
+    assert [m.term for m in matches] == ["GitHub"]
+
+
+def test_excludes_the_particle_from_the_matched_span():
+    """조사는 매치 구간 밖에 둔다.
+
+    구간이 조사까지 덮으면 치환할 때 조사가 같이 사라진다("도커를 배포했어요" →
+    "Docker 배포했어요"). 정확 탐지는 조사를 떼고 구간을 잡으므로, 겹침 해소에서
+    길이가 긴 퍼지 쪽이 이겨 그 결과를 덮어쓴다.
+    """
+    glossary = Glossary([Term("Docker", ("도커",))])
+    text = "도커를 배포했어요"
+
+    match = fuzzy_detect(text, glossary)[0]
+
+    assert match.matched == "도커"
+    assert text[match.start : match.end] == "도커"
+
+
+def test_finds_term_that_carries_a_particle_and_punctuation():
+    """조사와 문장부호가 함께 붙어도 찾는다 — Whisper가 마침표를 붙인다."""
+    glossary = Glossary([Term("GitHub", ("깃허브",))])
+
+    assert [m.term for m in fuzzy_detect("기터벳의.", glossary)] == ["GitHub"]
+
+
+def test_keeps_variants_that_merely_look_like_they_end_in_a_particle():
+    """조사 모양으로 끝나는 변형을 조사 분리가 잡아먹지 않는다.
+
+    "리듬이"는 README의 실측 변형인데 "이"가 조사라 분리 대상으로 보인다. 떼면
+    "리듬"이 되어 소리 키가 짧아져 후보에서 아예 빠진다(1.00 → 0.00).
+
+    **떼기만 하는 구현에서 이 테스트가 깨진다.** 꼬리를 뗀 형태와 안 뗀 형태를
+    모두 재고 높은 쪽을 쓰는 것이 이 테스트를 통과하는 이유다.
+    """
+    glossary = Glossary([Term("README", ("리드미",))])
+
+    match = fuzzy_detect("리듬이 수정했어요", glossary)[0]
+
+    assert match.term == "README"
+    assert match.matched == "리듬이"
+
+def test_strips_the_whole_particle_when_scores_tie():
+    """두 글자 조사를 반만 떼고 멈추지 않는다.
+
+    "파일선으로"는 "파일선"과 "파일선으" 둘 다 조사를 뗀 형태로 성립하고,
+    소리 키가 같아져 **점수가 0.933으로 동점**이다. 덜 깎인 쪽이 이기면
+    "으"가 구간에 남아 치환 결과가 "Python로"가 된다.
+
+    동점이면 많이 뗀 쪽을 쓴다 — 조사를 반만 남길 이유가 없다.
+    """
+    glossary = Glossary([Term("Python", ("파이썬",))])
+
+    match = fuzzy_detect("파일선으로 작성했어", glossary)[0]
+
+    assert match.matched == "파일선"
+
