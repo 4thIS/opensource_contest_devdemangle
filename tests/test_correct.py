@@ -48,11 +48,22 @@ def test_span_offsets_follow_the_result_text():
     assert result.text[second.start:second.end] == "README"
 
 
-def test_alias_followed_by_particle_is_not_replaced():
-    """알려진 한계: 끝도 토큰 경계와 일치해야 하므로 조사가 바로 붙으면 미매칭."""
+def test_alias_followed_by_ending_is_not_replaced():
+    """서술격 어미("다")는 조사가 아니라 끝 경계를 못 넘는다.
+
+    조사(에서·로·랑…)는 detect.py가 떼어내므로 이제 매칭된다. 어미는 닫힌 집합이
+    아니라 목록으로 관리하지 않기로 한 판단이고, 그래서 여기서 걸린다.
+    """
     result = correct("깃허브다", BASE)
     assert result.text == "깃허브다"
     assert result.spans == []
+
+
+def test_alias_followed_by_particle_is_replaced():
+    """조사가 붙어도 잡는다 — detect.py(#6)가 들어오며 해소된 옛 한계."""
+    result = correct("깃허브에서 봤어요", BASE)
+    assert result.text == "GitHub에서 봤어요"
+    assert _pairs(result) == [("깃허브", "GitHub")]
 
 
 def test_alias_inside_larger_token_is_not_replaced():
@@ -127,14 +138,14 @@ def test_span_keeps_source_casing_in_matched():
 
 
 def test_exact_detection_reports_method_and_confidence():
-    """잠정 탐지기는 정확 일치만 하므로 EXACT/1.0이다."""
+    """용어집에 등록된 별칭은 EXACT/1.0으로 보고된다."""
     result = correct("깃허브 봤어요", BASE)
     assert result.spans[0].method == Method.EXACT
     assert result.spans[0].confidence == 1.0
 
 
 def test_detector_is_replaceable():
-    """detect.py가 들어오면 기본값만 바꾸면 되도록 인자로 뽑아뒀다."""
+    """탐지기를 인자로 갈아끼울 수 있다 (퍼지 탐지가 들어올 자리)."""
     from devdemangle.types import Match
 
     def fake_detect(text, glossary):
@@ -143,6 +154,23 @@ def test_detector_is_replaceable():
     result = correct("XX 나머지", BASE, detect=fake_detect)
     assert result.text == "REPLACED 나머지"
     assert result.spans[0].method == Method.REGEX
+
+
+def test_unregistered_identifier_produces_no_span():
+    """🔴 팀 확인 필요 — detect()의 정규식 경로가 correct()에서 걸러진다.
+
+    detect()는 용어집에 없는 식별자(camelCase·플래그·snake_case)를 REGEX로
+    잡지만 term == matched다. correct()는 "바꿀 게 없는 매치"를 걸러내므로
+    이들이 Span으로 나오지 않는다.
+
+    이 동작은 detect.py 도입 **전과 동일하다**(옛 _detect_exact도 REGEX를 낸 적이
+    없다). 그래서 회귀는 아니지만, 미등록 식별자를 번역에서 보호하려면 Span이
+    필요하므로 언젠가 결정이 필요하다 — "바꿀 게 없다"와 "보호할 게 없다"는
+    다른 이야기다. 결정 전까지 현 동작을 여기 고정해 둔다.
+    """
+    result = correct("userId 값을 확인해", BASE)
+    assert result.text == "userId 값을 확인해"
+    assert result.spans == []
 
 
 def test_default_glossary_corrects_known_alias():

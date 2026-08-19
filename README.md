@@ -21,21 +21,32 @@ uv sync
 from devdemangle import correct
 
 result = correct("파이썬 스크립트 짰어요")
-print(result.text)     # "Python 스크립트 짰어요"
-print(result.matches)  # [Match(original='파이썬', canonical='Python', start=0, end=3)]
+print(result.text)   # "Python 스크립트 짰어요"
+print(result.spans)  # [Span(start=0, end=6, term='Python', matched='파이썬', ...)]
 ```
 
-용어집은 `devdemangle/data/terms.yaml`을 쓴다. 자체 용어집으로 보정하려면 `load_glossary()`로 불러와 `correct(text, terms=...)`에 넘긴다.
+`spans`의 `start`·`end`는 **보정된 텍스트** 기준이다. 앞 용어가 길어지면 뒤 위치가 밀리기 때문이다 — 입력 기준 좌표가 필요하면 `detect()`가 돌려주는 `Match`를 쓴다.
 
-> **알려진 한계 (v1)** — 매칭은 토큰 경계가 양쪽 다 정확히 맞을 때만 일어난다. 오탐을 최소화하려고 일부러 좁게 잡았다.
+용어집은 `data/terms.yaml`을 쓴다. 자체 용어집으로 보정하려면 `Glossary`로 불러와 두 번째 인자로 넘긴다.
+
+```python
+from devdemangle import Glossary, correct
+
+glossary = Glossary.from_yaml("my_terms.yaml")
+result = correct("깃허브에서 봤어요", glossary)   # "GitHub에서 봤어요"
+```
+
+> **알려진 한계** — 오탐을 최소화하려고 경계를 좁게 잡았다.
 >
-> - **조사가 alias 뒤에 붙으면 못 잡는다** (`"파일선으로 작성했어"`, `"기터벳의 리포지토리"`). alias가 토큰 전체와 같아야 매칭된다.
-> - **구두점이 붙은 토큰도 못 잡는다** (`"뷰,"`, `"Docker."`). 구두점 스트리핑은 다음 이터레이션 대상.
-> - 용어집에 **없는** 변형(`Python` → `"파일선"` 류)은 이 모듈의 스코프가 아니다 — 소리 유사도 기반 보정이 따로 맡는다.
+> - **앞에 다른 글자가 붙으면 안 잡는다** (`"우리깃허브"`). 한국어에서 용어 앞에 오는 것은 조사가 아니라 다른 단어라, 시작 경계는 완화하지 않는다.
+> - **어미는 떼지 않는다** (`"깃허브다"`). 조사는 닫힌 집합이라 목록으로 관리할 수 있지만 어미는 그렇지 않다.
+> - 용어집에 **없는** 변형(`Vue` ← `"뷰"` 류)은 이 모듈의 스코프가 아니다 — 소리 유사도 기반 보정이 따로 맡는다.
 
 ## 상태
 
-개발 중 (2026 오픈소스 개발자대회 출품 준비). 용어 보정 모듈(`devdemangle.correct`)까지 구현 완료, STT·번역 연동은 다음 단계.
+개발 중 (2026 오픈소스 개발자대회 출품 준비). 용어집 기반 탐지(`detect`)·보정(`correct`)과 STT 연동(`pipeline`)까지 구현 완료. 번역 연동은 다음 단계.
+
+실측 — 1주차 코퍼스에서 STT가 놓친 전사문 13개(용어 14건)에 보정을 적용해 **13/14 복원**. 남은 1건은 용어집에 없는 별칭(`Vue` ← "뷰")이라 소리 유사도 보정의 몫이다.
 
 ## 사용 모델
 
