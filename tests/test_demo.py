@@ -45,3 +45,31 @@ def test_change_line_lists_only_what_actually_changed():
 
     assert "[변경] 깃허브 → GitHub" in format_result(result)
     assert "userId → userId" not in format_result(result)
+
+
+def test_format_result_shows_translation_when_present():
+    result = PipelineResult(
+        raw="깃허브 봤어요",
+        corrected="GitHub 봤어요",
+        spans=[Span(0, 6, "GitHub", "깃허브", Method.EXACT, 1.0)],
+        translated="I saw GitHub.",
+        lost=[],
+    )
+    assert format_result(result) == (
+        "[전사] 깃허브 봤어요\n"
+        "[보정] GitHub 봤어요\n"
+        "[변경] 깃허브 → GitHub\n"
+        "[번역] I saw GitHub."
+    )
+
+
+def test_format_result_warns_about_terms_lost_in_translation():
+    """번역이 용어를 삼키면 조용히 넘어가지 않는다 — 시연에서 바로 보여야 한다."""
+    result = PipelineResult(
+        raw="깃허브 봤어요",
+        corrected="GitHub 봤어요",
+        spans=[Span(0, 6, "GitHub", "깃허브", Method.EXACT, 1.0)],
+        translated="I saw it.",
+        lost=["GitHub"],
+    )
+    assert "[유실] GitHub" in format_result(result)
