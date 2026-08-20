@@ -12,7 +12,18 @@ def format_result(result: PipelineResult) -> str:
         changes = ", ".join(f"{s.matched} → {s.term}" for s in result.spans)
     else:
         changes = "없음"
-    return f"[전사] {result.raw}\n[보정] {result.corrected}\n[변경] {changes}"
+
+    lines = [
+        f"[전사] {result.raw}",
+        f"[보정] {result.corrected}",
+        f"[변경] {changes}",
+    ]
+    if result.translated is not None:
+        lines.append(f"[번역] {result.translated}")
+    # 번역이 삼킨 용어는 숨기지 않는다 — 있을 때만 줄이 는다
+    if result.lost:
+        lines.append(f"[유실] {', '.join(result.lost)}")
+    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -27,6 +38,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--device", default="cuda", help="추론 장치 (기본 cuda)")
     parser.add_argument("--compute", default="float16", help="정밀도 (VRAM 부족 시 int8_float16)")
     parser.add_argument("--no-hotwords", action="store_true", help="hotwords 없이 전사 (비교용)")
+    parser.add_argument(
+        "--translate",
+        action="store_true",
+        help="보정 후 영어로 번역한다 (용어는 보호). uv sync --extra translate 필요",
+    )
     args = parser.parse_args(argv)
 
     if not args.audio.exists():
@@ -39,7 +55,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.no_hotwords:
         stt = _WithoutHotwords(stt)
 
-    print(format_result(run(args.audio, stt=stt)))
+    translator = None
+    if args.translate:
+        # 번역 모델은 여기서만 올린다 — 안 쓰는 실행에 수백 MB를 물리지 않는다.
+        from devdemangle.translate.opusmt import OpusMTTranslator
+
+        translator = OpusMTTranslator()
+
+    print(format_result(run(args.audio, stt=stt, translator=translator)))
     return 0
 
 
