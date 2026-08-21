@@ -9,9 +9,44 @@ DevDemangle은 용어집 기반 탐지·보정으로 이런 개발 용어를 표
 "라다시 디바운스 써서 처리했어요"  →  "lodash debounce 써서 처리했어요"
 ```
 
+## 사용법
+
+```bash
+git clone https://github.com/4thIS/opensource_contest_devdemangle.git
+cd opensource_contest_devdemangle
+uv sync
+```
+
+```python
+from devdemangle import correct
+
+result = correct("파이썬 스크립트 짰어요")
+print(result.text)   # "Python 스크립트 짰어요"
+print(result.spans)  # [Span(start=0, end=6, term='Python', matched='파이썬', ...)]
+```
+
+`spans`의 `start`·`end`는 **보정된 텍스트** 기준이다. 앞 용어가 길어지면 뒤 위치가 밀리기 때문이다 — 입력 기준 좌표가 필요하면 `detect()`가 돌려주는 `Match`를 쓴다.
+
+용어집은 `data/terms.yaml`을 쓴다. 자체 용어집으로 보정하려면 `Glossary`로 불러와 두 번째 인자로 넘긴다.
+
+```python
+from devdemangle import Glossary, correct
+
+glossary = Glossary.from_yaml("my_terms.yaml")
+result = correct("깃허브에서 봤어요", glossary)   # "GitHub에서 봤어요"
+```
+
+> **알려진 한계** — 오탐을 최소화하려고 경계를 좁게 잡았다.
+>
+> - **앞에 다른 글자가 붙으면 안 잡는다** (`"우리깃허브"`). 한국어에서 용어 앞에 오는 것은 조사가 아니라 다른 단어라, 시작 경계는 완화하지 않는다.
+> - **어미는 떼지 않는다** (`"깃허브다"`). 조사는 닫힌 집합이라 목록으로 관리할 수 있지만 어미는 그렇지 않다.
+> - 용어집에 **없는** 변형(`Vue` ← `"뷰"`)은 여기서 다루지 않는다. 소리 유사도로 찾는 일은 별도 모듈이 맡는다.
+
 ## 상태
 
-개발 중 (2026 오픈소스 개발자대회 출품 준비).
+개발 중 (2026 오픈소스 개발자대회 출품 준비). 용어집 기반 탐지(`detect`)·보정(`correct`)과 STT 연동(`pipeline`)까지 구현 완료. 번역 연동은 다음 단계.
+
+실측 — 1주차 음성 코퍼스(21문장·용어 23건)를 STT부터 관통시켜 **23건 중 21건 복원(91%)**. 남은 2건은 STT가 별칭을 띄어 쓰거나(`파일 선` ← `파일선`) 영어로 뱉은 경우라 보정 단계에서 다룰 수 있는 것이 아니다.
 
 ## 사용 모델
 

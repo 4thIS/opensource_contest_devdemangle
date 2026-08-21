@@ -1,3 +1,15 @@
+"""_cuda 헬퍼 테스트.
+
+아래 두 테스트는 nvidia pip 패키지(`--extra cuda`)가 깔려 있어야 의미가 있다.
+없으면 건너뛴다 — 모델도 GPU도 없는 환경에서 `pytest`가 초록불이어야
+코드를 받은 사람이 바로 돌려볼 수 있다.
+"""
+
+import pytest
+
+pytest.importorskip("nvidia", reason="--extra cuda 없이 실행 중 (nvidia pip 패키지 없음)")
+
+
 def test_setup_cuda_dlls_returns_paths():
     from devdemangle._cuda import setup_cuda_dlls
 

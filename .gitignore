@@ -38,6 +38,7 @@ Thumbs.db
 # Claude Code
 .claude/
 CLAUDE.md
+.worktrees/
 
 # CONFIDENTIAL
 team_docs/
@@ -67,3 +68,6 @@ experiments/audio/*
 *.ogg
 *.aac
 *.wma
+
+# superpowers 스킬 산출물은 저장소에 넣지 않는다.
+docs/superpowers/
