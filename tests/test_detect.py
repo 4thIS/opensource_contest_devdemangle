@@ -402,3 +402,33 @@ def test_homonym_aliases_currently_false_positive(seed_glossary, sentence, forbi
     """
     found = {m.term for m in detect(sentence, seed_glossary) if m.method is Method.EXACT}
     assert forbidden not in found
+
+
+def test_resolve_prefers_exact_even_when_the_other_is_longer():
+    """길이보다 method가 먼저다 — 긴 소리 추정이 짧은 등록 용어를 이기면 안 된다.
+
+    등록 탐지는 경계 규칙에 맞는 구간만 내보내고, 소리 추정은 어절을 통째로 잡는
+    경향이 있어 더 길어진다. 길이를 먼저 보면 "도커를"(fuzzy)이 "도커"(exact)를
+    밀어내고, 치환에서 조사가 함께 사라진다.
+    """
+    matches = [
+        _m(0, 3, Method.FUZZY, 0.95, term="Docker"),
+        _m(0, 2, Method.EXACT, 1.0, term="Docker"),
+    ]
+
+    assert resolve_overlaps(matches) == [_m(0, 2, Method.EXACT, 1.0, term="Docker")]
+
+
+def test_resolve_prefers_exact_even_when_regex_is_longer():
+    """정규식이 더 길어도 등록 용어가 앞선다.
+
+    등록 용어가 정규식보다 우선한다는 규칙과, 겹치면 긴 쪽을 남긴다는 규칙이
+    충돌하는 자리다. 등록 용어 쪽을 택한다 — 정규식은 모양만 보고 잡은 추정이고
+    용어집은 사람이 확인해 넣은 것이다.
+    """
+    matches = [
+        _m(0, 10, Method.REGEX, 0.8, term="get_user_id"),
+        _m(0, 3, Method.EXACT, 1.0, term="SQL"),
+    ]
+
+    assert resolve_overlaps(matches) == [_m(0, 3, Method.EXACT, 1.0, term="SQL")]
