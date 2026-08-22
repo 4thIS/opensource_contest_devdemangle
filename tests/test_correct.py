@@ -122,11 +122,15 @@ def test_lowercase_alias_is_corrected_to_canonical():
 
 
 def test_already_canonical_is_left_alone():
-    """C-COR-02: 이미 표준형인 것은 건드리지 않는다 (Span으로도 안 잡힌다)."""
+    """이미 표준형인 것은 텍스트를 건드리지 않는다.
+
+    다만 **결과에서 사라지지는 않는다.** spans는 "바꾼 것"이 아니라 "지킨 것"이라,
+    이미 표준형인 용어도 하이라이트·번역 보호 대상으로 실려야 한다.
+    """
     glossary = Glossary([Term(canonical="SQL", aliases=("SQL", "에스큐엘"))])
     result = correct("SQL 문을 짰어", glossary)
     assert result.text == "SQL 문을 짰어"
-    assert result.spans == []
+    assert _pairs(result) == [("SQL", "SQL")]
 
 
 def test_span_keeps_source_casing_in_matched():
@@ -144,33 +148,18 @@ def test_exact_detection_reports_method_and_confidence():
     assert result.spans[0].confidence == 1.0
 
 
-def test_detector_is_replaceable():
-    """탐지기를 인자로 갈아끼울 수 있다 (퍼지 탐지가 들어올 자리)."""
-    from devdemangle.types import Match
+def test_unregistered_identifier_is_reported_but_not_replaced():
+    """미등록 식별자는 보고하되 바꾸지 않는다.
 
-    def fake_detect(text, glossary):
-        return [Match(0, 2, "REPLACED", text[0:2], Method.REGEX, 0.8)]
+    정규식으로 찾은 것은 되돌릴 표준형이 없다 — 이미 깨진 용어는 모양으로도
+    못 찾으므로, 이들에게 가능한 건 보호뿐이다. 그러려면 결과에 실려야 한다.
 
-    result = correct("XX 나머지", BASE, detect=fake_detect)
-    assert result.text == "REPLACED 나머지"
-    assert result.spans[0].method == Method.REGEX
-
-
-def test_unregistered_identifier_produces_no_span():
-    """🔴 팀 확인 필요 — detect()의 정규식 경로가 correct()에서 걸러진다.
-
-    detect()는 용어집에 없는 식별자(camelCase·플래그·snake_case)를 REGEX로
-    잡지만 term == matched다. correct()는 "바꿀 게 없는 매치"를 걸러내므로
-    이들이 Span으로 나오지 않는다.
-
-    이 동작은 detect.py 도입 **전과 동일하다**(옛 _detect_exact도 REGEX를 낸 적이
-    없다). 그래서 회귀는 아니지만, 미등록 식별자를 번역에서 보호하려면 Span이
-    필요하므로 언젠가 결정이 필요하다 — "바꿀 게 없다"와 "보호할 게 없다"는
-    다른 이야기다. 결정 전까지 현 동작을 여기 고정해 둔다.
+    "바꿀 게 없다"와 "지킬 게 없다"는 다른 이야기다.
     """
     result = correct("userId 값을 확인해", BASE)
     assert result.text == "userId 값을 확인해"
-    assert result.spans == []
+    assert _pairs(result) == [("userId", "userId")]
+    assert result.spans[0].method is Method.REGEX
 
 
 def test_default_glossary_corrects_known_alias():
@@ -180,3 +169,67 @@ def test_default_glossary_corrects_known_alias():
     result = public_correct("파이썬 좋아해요")
     assert result.text == "Python 좋아해요"
     assert result.spans[0].term == "Python"
+
+
+def test_longer_canonical_wins_over_shorter_alias_of_another_term():
+    """표준형도 겹침 경쟁에 참여한다 — 걸러내는 건 그다음이다.
+
+    "REST API"는 이미 표준형이라 바꿀 게 없지만, 먼저 걸러내면 다른 용어의
+    짧은 별칭("API")이 무경쟁으로 이겨 엉뚱한 치환이 일어난다.
+    """
+    glossary = Glossary([
+        Term(canonical="REST API"),
+        Term(canonical="Airplane", aliases=("API",)),
+    ])
+
+    result = correct("REST API 응답이 느려요", glossary)
+
+    assert result.text == "REST API 응답이 느려요"
+
+
+def test_reports_both_replaced_and_protected_in_one_sentence():
+    """한 문장에 바꾼 것과 지킨 것이 같이 있으면 둘 다 나온다."""
+    glossary = Glossary([GITHUB])
+
+    result = correct("깃허브에 userId 넘겼어요", glossary)
+
+    assert result.text == "GitHub에 userId 넘겼어요"
+    assert _pairs(result) == [("깃허브", "GitHub"), ("userId", "userId")]
+
+
+# --- 소리 유사도 배선 ---
+
+
+def test_recovers_unregistered_variant_by_sound():
+    """용어집에 없는 발음 변형도 되돌린다 — 이 라이브러리의 차별점이다.
+
+    "더커"는 별칭에 없지만 "도커"와 소리가 가깝다. 정확 매칭만으로는 못 잡는다.
+    """
+    glossary = Glossary([Term(canonical="Docker", aliases=("도커",))])
+
+    result = correct("더커 컨테이너를 재시작할게요", glossary)
+
+    assert result.text == "Docker 컨테이너를 재시작할게요"
+    assert result.spans[0].method is Method.FUZZY
+
+
+def test_threshold_is_adjustable():
+    """임계값을 부르는 쪽에서 조정할 수 있다.
+
+    용어집이 커지면 안전 구간이 움직인다. 값을 코드에 박아두면 재측정한 뒤
+    라이브러리를 고쳐야 한다.
+    """
+    glossary = Glossary([Term(canonical="Docker", aliases=("도커",))])
+
+    assert correct("더커 재시작", glossary, threshold=0.99).text == "더커 재시작"
+    assert correct("더커 재시작", glossary, threshold=0.85).text == "Docker 재시작"
+
+
+def test_below_threshold_is_not_corrected():
+    """임계값에 못 미치면 건드리지 않는다."""
+    glossary = Glossary([Term(canonical="Docker", aliases=("도커",))])
+
+    result = correct("라면 먹고 갈래", glossary)
+
+    assert result.text == "라면 먹고 갈래"
+    assert result.spans == []

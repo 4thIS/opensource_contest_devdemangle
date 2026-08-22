@@ -8,8 +8,11 @@ from devdemangle.pipeline import PipelineResult, run
 
 
 def format_result(result: PipelineResult) -> str:
-    if result.spans:
-        changes = ", ".join(f"{s.matched} → {s.term}" for s in result.spans)
+    # spans는 지킨 것까지 담는다. 여기서는 실제로 바뀐 것만 보여준다 —
+    # "userId → userId"는 변경이 아니다.
+    replaced = [s for s in result.spans if s.matched != s.term]
+    if replaced:
+        changes = ", ".join(f"{s.matched} → {s.term}" for s in replaced)
     else:
         changes = "없음"
     return f"[전사] {result.raw}\n[보정] {result.corrected}\n[변경] {changes}"
