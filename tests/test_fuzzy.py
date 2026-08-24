@@ -338,14 +338,16 @@ def test_known_limit_ending_fuses_with_registered_alias():
     별칭인데 "네"가 조사 목록에 없어 정확 탐지가 막고, 소리 탐지는 길이 비율에
     걸린다.
 
-    **상한을 올려서 풀 수 없다.** 오탐 "도커피"와 두 축이 소수점까지 같다.
+    **상한을 올려서 풀 수 없다.** 오탐 "깃허브다"와 글자 수 비율이 같다.
 
-        리듬이네 ~ 리드미   유사도 0.833   비율 1.40   정답
-        도커피   ~ 독커     유사도 0.833   비율 1.40   오탐
+        리듬이네 ~ 리드미   유사도 0.833   글자수 4/3 = 1.33   정답
+        깃허브다  ~ 깃허브    유사도 0.875   글자수 4/3 = 1.33   오탐
 
-    상한을 1.40까지 올리면 "도커피"가 그대로 따라 들어온다. 어미를 규칙에서 뺀
-    판단의 비용이 처음으로 실측된 자리다. 그 판단을 다시 볼지는 서술격 표본이
-    더 들어온 뒤에 정한다.
+    둘 다 "등록 별칭 + 어미"라 구조가 같고, 유사도는 오탐 쪽이 오히려 높다.
+    상한을 1.33까지 올리면 "깃허브다"가 먼저 들어온다.
+
+    어미를 규칙에서 뺀 판단의 비용이 처음으로 실측된 자리다. 그 판단을 다시 볼지는
+    서술격 표본이 더 들어온 뒤에 정한다.
     """
     glossary = _ratio_glossary()
 
@@ -403,3 +405,21 @@ def test_known_limit_pilot_is_mistaken_for_python():
     glossary = _real_glossary()
 
     assert fuzzy_detect("파일럿에서 발견", glossary) == []
+
+
+def test_recovers_variant_whose_key_length_is_distorted_by_normalization():
+    """소리 키 길이는 정규화 부산물을 담는다 — 음절 수로 재야 한다.
+
+    "리액터"는 React의 실측 변형인데, 키 길이로 재면 별칭 "리액트"의 1.33배다.
+
+        리액트  riaekteu  →  "eu" 제거  →  liaekt    (6자)
+        리액터  riaekteo  →  그대로      →  liaekteo  (8자)
+
+    같은 3음절인데 정규화 단계 때문에 키가 벌어진다. 길이 비율로 상한을 두면
+    이 정답이 오탐 "깃허브다"(1.29)보다 불리한 자리에 놓인다.
+    """
+    glossary = _ratio_glossary()
+
+    found = fuzzy_detect("지금 티비에서 쓰는게 리액터", glossary)
+
+    assert found and found[0].term == "React"

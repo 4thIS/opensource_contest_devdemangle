@@ -29,18 +29,27 @@ DEFAULT_THRESHOLD = 0.78
 # 나와 임계값으로 못 막는다("뷰"/"브이유"가 0.86이다).
 MIN_KEY_LEN = 5
 
-# 후보 키가 별칭 키보다 이 배수를 넘으면 버린다.
+# 후보의 글자 수가 별칭보다 이 배수를 넘으면 버린다.
 #
 # 별칭이 덩어리의 일부일 때("우리"+"깃허브", "도커"+"피") 남는 글자는 점수를 조금
 # 깎을 뿐 매치를 막지 못한다. 어미가 붙은 경우("깃허브"+"다")도 같다. 셋 다 어절
 # 맨 앞에서 시작하고 전부 한글이라 시작 경계로도, 덩어리 제한으로도 안 걸린다.
 #
-# 배포 용어집(별칭 58개)에서 정답 12건의 최대 비율이 1.20("더커"·"도컬"),
-# 임계값을 뚫은 오탐 3건의 최소가 1.29("깃허브다")다. 그 사이가 안전 구간이다.
+# **소리 키 길이가 아니라 글자 수로 잰다.** 키는 정규화를 거치면서 길이가 왜곡된다 —
+# "리액트"는 "eu" 제거로 6자가 되고 "리액터"는 8자로 남아, 같은 3음절인데 1.33배가
+# 된다. 그러면 실측 정답 "리액터"가 오탐 "깃허브다"보다 불리해진다.
 #
-# **하한은 두지 않는다.** 별칭보다 짧은 정답이 있다 — "닷커"가 별칭 "닷컬"보다
-# 짧아 0.86이다.
+# 실측 36건(1차 21 + 2차 15)에서 글자 수 비율이 1.00을 넘는 정답은 "타입스트리트"
+# 하나(1.20)뿐이고, 오탐 최소는 "깃허브다"의 1.33이다. 그 사이가 안전 구간이다.
+#
+# **하한은 두지 않는다.** 별칭보다 짧은 정답이 있다 — "넥스트"가 그렇다.
 MAX_LENGTH_RATIO = 1.25
+
+
+def _length(s: str) -> int:
+    """비교용 글자 수. 별칭에 든 공백은 세지 않는다("타입 스트릿")."""
+    return len(s.replace(" ", ""))
+
 
 # 후보는 한글 덩어리만 본다. 라틴 식별자는 정규식 탐지가 모양으로 잡으므로 소리로
 # 추정할 이유가 없고, 어절을 통째로 뽑으면 문장부호까지 소리 키에 섞인다.
@@ -93,7 +102,7 @@ def fuzzy_detect(
     taken = [(m.start, m.end) for m in (existing or [])]
 
     alias_keys = [
-        (phonetic_key(alias), term.canonical)
+        (phonetic_key(alias), _length(alias), term.canonical)
         for term in glossary
         for alias in term.aliases
     ]
@@ -116,8 +125,9 @@ def fuzzy_detect(
             form_key = phonetic_key(form)
             if len(form_key) < min_key_len:
                 continue
-            for alias_key, canonical in alias_keys:
-                if len(form_key) > len(alias_key) * MAX_LENGTH_RATIO:
+            form_len = _length(form)
+            for alias_key, alias_len, canonical in alias_keys:
+                if form_len > alias_len * MAX_LENGTH_RATIO:
                     continue
                 score = fuzz.ratio(form_key, alias_key) / 100
                 if score > best_score:
