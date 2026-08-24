@@ -70,22 +70,21 @@ def correct(
         parts.append(text[cursor:match.start])
         written += match.start - cursor
 
-        # 되돌릴 표준형이 따로 있을 때만 바꾼다. 이미 표준형이거나 정규식으로 찾은
-        # 식별자는 그대로 두되, **결과에는 싣는다** — 하이라이트와 번역 보호가
-        # 이 목록을 입력으로 쓴다. "바꿀 게 없다"와 "지킬 게 없다"는 다르다.
-        replacement = match.matched if match.matched == match.term else match.term
-        parts.append(replacement)
+        # 이미 표준형이거나 정규식으로 찾은 식별자는 term == matched라 바뀌는 게
+        # 없다. 그래도 **결과에는 싣는다** — 하이라이트와 번역 보호가 이 목록을
+        # 입력으로 쓴다. "바꿀 게 없다"와 "지킬 게 없다"는 다르다.
+        parts.append(match.term)
         spans.append(
             Span(
                 start=written,
-                end=written + len(replacement),
+                end=written + len(match.term),
                 term=match.term,
                 matched=match.matched,
                 method=match.method,
                 confidence=match.confidence,
             )
         )
-        written += len(replacement)
+        written += len(match.term)
         cursor = match.end
 
     parts.append(text[cursor:])

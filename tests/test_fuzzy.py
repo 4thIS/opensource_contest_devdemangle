@@ -327,6 +327,31 @@ def _ratio_glossary():
     return Glossary.from_yaml(root / "data" / "terms.yaml")
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="정답과 오탐이 두 축 모두에서 겹친다 — 리듬이네와 도커피가 0.833/1.40으로 같다",
+)
+def test_known_limit_ending_fuses_with_registered_alias():
+    """⚠️ 알려진 한계 — 어미가 붙은 등록 별칭은 되돌리지 못한다.
+
+    2차 녹음 실측에서 "README에"가 "리듬이네"로 융합돼 나왔다. "리듬이"는 등록
+    별칭인데 "네"가 조사 목록에 없어 정확 탐지가 막고, 소리 탐지는 길이 비율에
+    걸린다.
+
+    **상한을 올려서 풀 수 없다.** 오탐 "도커피"와 두 축이 소수점까지 같다.
+
+        리듬이네 ~ 리드미   유사도 0.833   비율 1.40   정답
+        도커피   ~ 독커     유사도 0.833   비율 1.40   오탐
+
+    상한을 1.40까지 올리면 "도커피"가 그대로 따라 들어온다. 어미를 규칙에서 뺀
+    판단의 비용이 처음으로 실측된 자리다. 그 판단을 다시 볼지는 서술격 표본이
+    더 들어온 뒤에 정한다.
+    """
+    glossary = _ratio_glossary()
+
+    assert [m.term for m in fuzzy_detect("문서는 리듬이네", glossary)] == ["README"]
+
+
 def test_rejects_chunks_much_longer_than_the_alias():
     """별칭보다 지나치게 긴 덩어리는 버린다.
 
