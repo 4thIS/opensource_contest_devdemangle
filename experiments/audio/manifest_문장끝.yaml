@@ -7,10 +7,10 @@
 #    (녹음이 끝난 뒤에는 "실제로 읽은 문장"과 이 파일이 일치해야 한다)
 #
 # ⚠️ 1차 `manifest.yaml`과 섞지 않는다. 그쪽은 리스크 1(hotwords) 실험 전용이고
-#    여기 15건을 넣으면 그 실험의 수치가 바뀐다. 파일명은 seed_22부터 이어 붙이되
+#    여기 것을 넣으면 그 실험의 수치가 바뀐다. 파일명은 seed_22부터 이어 붙이되
 #    정답지는 차수별로 나눈다.
 #
-# 용어 13개(고유) / 등장 16회 — Docker·Python·debounce는 문장 구조를 달리해 두 번 넣었다.
+# 용어 13개(고유) / 등장 18회 — Docker·Python·debounce는 문장 구조를 달리해 두 번 넣었다.
 # 전부 1차에서 이미 실측된 용어다. 신규 용어를 섞으면 못 잡았을 때 "경계 규칙이
 # 틀린 건지 별칭이 없는 건지" 갈라낼 수 없다.
 #
@@ -93,7 +93,17 @@
 # lodash·debounce·의존성 주입은 용어집에 있는데 한 번도 소리로 확인된 적이 없다.
 # seed_34의 "라다시"는 README 첫 화면과 시연 골격에 쓰이는 별칭인데 출처가 추측이다.
 
-- file: seed_34.wav
+# seed_34는 화자 A가 두 번 읽었다. 문장은 같고 lodash를 읽는 방식이 다르다 —
+# a는 "로다시", b는 "라다시"다. 별칭 두 개를 한 번씩 겨냥한 것이므로 둘 다 남긴다.
+# terms는 "살아남아야 할 것"이지 "살아남은 것"이 아니다. b에서 debounce가 통째로
+# 뭉개졌지만 그건 놓친 것으로 세야 하므로 지우지 않는다.
+
+- file: seed_34a.wav
+  speaker: A
+  text: "lodash의 debounce 써서 처리했어요."
+  terms: [lodash, debounce]
+
+- file: seed_34b.wav
   speaker: A
   text: "lodash의 debounce 써서 처리했어요."
   terms: [lodash, debounce]
