@@ -61,3 +61,101 @@ def test_vue_short_form_stays_unregistered(glossary):
     등록하려면 오탐 표본을 근거로 결정해야 하므로, 그전까지는 빠져 있는 게 맞다.
     """
     assert all("뷰" not in t.aliases for t in glossary)
+
+
+# 2차 녹음에서 STT가 실제로 뱉은 문자열. 위 MEASURED와 나눠 두는 이유는 출처가
+# 달라서다 — 이쪽은 화자별로 정밀도가 갈린다(화자 A는 float16/GPU, B·C는 int8/CPU).
+# 어느 seed에서 나왔는지는 data/terms.yaml의 항목 주석에 적혀 있다.
+MEASURED_2CHA = [
+    ("기터브", "GitHub"),
+    ("토커", "Docker"),
+    ("라다씨", "lodash"),
+    ("러데쉬", "lodash"),
+    ("패스트 API", "FastAPI"),
+    ("자바", "Java"),
+    ("러스트", "Rust"),
+    ("스프링", "Spring"),
+    ("D장고", "Django"),
+    ("next.jpg", "Next.js"),
+    ("익스프레스", "Express"),
+    ("엔진X", "Nginx"),
+    ("레디스", "Redis"),
+    ("몽고 디비", "MongoDB"),
+    ("카프카", "Kafka"),
+    ("엘라스틱 서치", "Elasticsearch"),
+    ("킷랩", "GitLab"),
+    ("젠킨스", "Jenkins"),
+    ("포스트맨", "Postman"),
+    ("피그마", "Figma"),
+    ("인텔리제이", "IntelliJ"),
+    ("웹팩", "webpack"),
+    ("테라폼", "Terraform"),
+    ("리팩토링", "리팩터링"),
+    ("미드웨어", "미들웨어"),
+    ("미들 베어", "미들웨어"),
+]
+
+
+@pytest.mark.parametrize("variant,canonical", MEASURED_2CHA)
+def test_measured_variant_from_second_round_maps_to_canonical(
+    glossary, variant, canonical
+):
+    """2차 녹음 실측 변형이 표준형으로 이어진다."""
+    owners = [t.canonical for t in glossary if variant in t.aliases]
+    assert owners == [canonical]
+
+
+def test_django_keeps_the_letter_that_stt_left_behind(glossary):
+    """"D장고"를 줄여 "장고"만 두면 안 된다.
+
+    시작 경계가 매치 앞 글자를 보는데 "D"가 영숫자라 "장고"는 걸리지 않는다
+    ("윈도커널"의 "도커"를 막는 그 규칙이다). 실측 문자열을 통째로 가지고 있어야 한다.
+    """
+    django = glossary.get("Django")
+    assert "D장고" in django.aliases
+
+
+def test_kotlin_has_no_alias_on_purpose(glossary):
+    """Kotlin은 쓸 수 있는 별칭이 없어서 비어 있다 — 빠뜨린 게 아니다.
+
+    실측 형태 "코트를"은 조사를 떼면 옷("코트")이 되고 소리 키도 짧아 못 쓴다.
+    표준 음차 "코틀린"은 실측 전사 "커리는"(쿼리는)과 0.833이라 임계값으로 못 가른다.
+    되살리려면 근거가 하나 더 필요하다. 그전에 채우지 말 것.
+    """
+    assert glossary.get("Kotlin").aliases == ()
+    assert all("코틀린" not in t.aliases for t in glossary)
+
+
+def test_pilot_and_plastic_stay_unregistered_but_that_does_not_block_them(glossary):
+    """일상어 실측 형태는 등록하지 않는다. 다만 그게 방어가 되지는 않는다.
+
+    소리 비교는 한글 별칭끼리 하므로, 같은 용어에 다른 한글 별칭이 남아 있으면
+    뺀 자리가 그대로 메워진다 — "플라스틱"은 "플라스크"를 타고 0.833으로,
+    "파일럿"은 "코파일럿"을 타고 0.875로 잡힌다.
+    여기서 확인하는 건 "등록하지 않았다"까지다. 막혔다고 읽으면 안 된다.
+    """
+    assert all("플라스틱" not in t.aliases for t in glossary)
+    assert all("파일럿" not in t.aliases for t in glossary)
+
+
+def test_truncated_form_stays_unregistered(glossary):
+    """"Swag"는 뒤가 통째로 잘린 형태라 등록하지 않는다.
+
+    되돌릴 근거가 표본 하나뿐인데 영어 낱말과 겹친다. 다시 재고 판단한다.
+    """
+    assert all("Swag" not in t.aliases for t in glossary)
+
+
+def test_spaced_forms_are_registered_alongside_joined_ones(glossary):
+    """STT가 긴 영어 용어 가운데 공백을 넣는 일이 반복된다.
+
+    붙은 형태만 두면 공백 하나에 놓친다. 소리로도 못 구한다 — 한글 덩어리만 후보로
+    보는 구조라 앞 조각만 남아 점수가 깎인다("패스트"가 0.769로 임계값 아래다).
+    """
+    for spaced, canonical in [
+        ("패스트 API", "FastAPI"),
+        ("몽고 디비", "MongoDB"),
+        ("엘라스틱 서치", "Elasticsearch"),
+        ("쿠버 네티스", "Kubernetes"),
+    ]:
+        assert spaced in glossary.get(canonical).aliases
