@@ -23,7 +23,6 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from devdemangle.detect import detect, resolve_overlaps
 from devdemangle.glossary import Glossary
 from devdemangle.types import Span
 
@@ -60,43 +59,6 @@ def placeholder_for(index: int) -> str:
         raise ValueError(f"index는 0 이상이어야 한다: {index}")
     digits = "".join(_DIGIT_WORDS[int(d)] for d in str(index))
     return PLACEHOLDER_PREFIX + digits
-
-
-def spans_for_protection(text: str, glossary: Glossary) -> list[Span]:
-    """번역에서 가려야 할 용어의 위치.
-
-    **`correct()`가 돌려주는 spans와 다르다.** 그쪽은 *바꾼* 것만 담는다 — 이미
-    표준형이면 바꿀 게 없으니 안 담긴다. 번역 보호는 *있는* 것 전부가 대상이다.
-
-    이 구분을 놓치면 STT가 잘 알아들은 문장일수록 번역에서 더 망가진다. 실측에서
-    보호 없이 번역했을 때 이렇게 됐다:
-
-        REST API    → ReST APl
-        TypeScript  → Type Type Type Type
-        React       → the real thing
-        repository  → recipe
-
-    넷 다 보정이 손댈 게 없던(이미 표준형인) 용어다.
-
-    Args:
-        text: 번역에 넣을 문장. 보통 `correct()`가 돌려준 보정된 텍스트다.
-        glossary: 용어집.
-
-    Returns:
-        text 기준 좌표의 Span 목록. 위치 오름차순이고 서로 겹치지 않는다.
-    """
-    matches = resolve_overlaps(detect(text, glossary))
-    return [
-        Span(
-            start=m.start,
-            end=m.end,
-            term=m.term,
-            matched=m.matched,
-            method=m.method,
-            confidence=m.confidence,
-        )
-        for m in matches
-    ]
 
 
 def _check(text: str, spans: list[Span]) -> None:
@@ -147,8 +109,12 @@ def mask(text: str, spans: list[Span]) -> tuple[str, list[tuple[str, str]]]:
     return "".join(parts), mapping
 
 
-def unmask(text: str, mapping: list[tuple[str, str]]) -> tuple[str, list[str]]:
-    """플레이스홀더를 원래 용어로 되돌린다.
+def unmask(text: str, mapping: list[tuple[str, str, str]]) -> tuple[str, list[str]]:
+    """플레이스홀더를 되돌린다.
+
+    mapping의 각 항목은 (플레이스홀더, 되돌릴 값, 보고할 이름) 세 값이다. 둘이
+    갈리는 건 고정 번역어가 있을 때다 — 텍스트에는 번역어를 꽂아 넣지만, 무엇을
+    지켰고 무엇을 잃었는지는 항상 canonical(보고할 이름) 기준으로 알린다.
 
     번역이 플레이스홀더를 삼키는 경우가 있다. 되돌리지 못한 것은 숨기지 않고
     따로 알린다 — 조용히 빠지면 무엇이 사라졌는지 아무도 모른다.
@@ -159,14 +125,14 @@ def unmask(text: str, mapping: list[tuple[str, str]]) -> tuple[str, list[str]]:
     restored = text
     lost: list[str] = []
 
-    for token, term in sorted(mapping, key=lambda m: -len(m[0])):
+    for token, restore_value, report_value in sorted(mapping, key=lambda m: -len(m[0])):
         if token in restored:
-            restored = restored.replace(token, term)
+            restored = restored.replace(token, restore_value)
         else:
-            lost.append(term)
+            lost.append(report_value)
 
     # lost는 입력 순서로 돌려준다 (위에서 길이순으로 돌았다)
-    order = [term for token, term in mapping if term in lost]
+    order = [report_value for token, _, report_value in mapping if report_value in lost]
     return restored, order
 
 
@@ -174,6 +140,8 @@ def translate_protected(
     text: str,
     spans: list[Span],
     translator: Translator,
+    glossary: Glossary | None = None,
+    target_lang: str = "en",
 ) -> TranslationResult:
     """용어를 보호하면서 번역한다.
 
@@ -182,16 +150,29 @@ def translate_protected(
         spans: 보호할 용어의 위치. **text 기준 좌표여야 한다** —
             `CorrectionResult.spans`가 그대로 맞는다.
         translator: 문장 하나를 번역하는 것.
+        glossary: 고정 번역어 조회에 쓴다. 생략하면 모든 용어를 canonical
+            그대로 복원한다 — 고정 번역어가 없을 때와 같은 동작이다.
+        target_lang: `glossary.translation_for()`에 넘길 언어 코드.
 
     Returns:
-        번역문과, 보호한 용어·잃어버린 용어.
+        번역문과, 보호한 용어·잃어버린 용어. 두 목록 다 canonical 기준이다 —
+        본문에는 고정 번역어가 들어가도, 무엇을 지켰는지는 항상 원래 용어 이름으로 알린다.
     """
     if not spans:
         return TranslationResult(text=translator.translate(text), protected=[], lost=[])
 
     masked, mapping = mask(text, spans)
     translated = translator.translate(masked)
-    restored, lost = unmask(translated, mapping)
+
+    restore_mapping = [
+        (
+            token,
+            glossary.translation_for(term, target_lang) if glossary is not None else term,
+            term,
+        )
+        for token, term in mapping
+    ]
+    restored, lost = unmask(translated, restore_mapping)
 
     return TranslationResult(
         text=restored,

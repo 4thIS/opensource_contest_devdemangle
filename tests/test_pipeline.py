@@ -134,3 +134,12 @@ def test_run_reports_terms_lost_in_translation():
     tr = FakeTranslator("I saw it.")  # 플레이스홀더가 사라졌다
     result = run(Path("dummy.wav"), stt=fake, translator=tr)
     assert result.lost == ["GitHub"]
+
+
+def test_run_translates_using_glossary_fixed_translation():
+    """용어집의 고정 번역어가 번역 경로까지 이어진다."""
+    fake = FakeSTT("의존성 주입으로 풀었어요")
+    glossary = Glossary([Term(canonical="의존성 주입", translations={"en": "dependency injection"})])
+    tr = FakeTranslator("I solved it with TERMZERO.")
+    result = run(Path("dummy.wav"), stt=fake, glossary=glossary, translator=tr)
+    assert result.translated == "I solved it with dependency injection."

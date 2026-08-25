@@ -9,13 +9,15 @@
 
 import pytest
 
+from devdemangle.glossary import Glossary
 from devdemangle.translate.protect import (
     PLACEHOLDER_PREFIX,
     TranslationResult,
     placeholder_for,
     translate_protected,
+    unmask,
 )
-from devdemangle.types import Method, Span
+from devdemangle.types import Method, Span, Term
 
 
 def _span(start, end, term, matched=None):
@@ -142,36 +144,98 @@ def test_result_carries_what_was_protected():
 
 
 # ── 보호 대상 선정 ────────────────────────────────────────────────
-# correct()의 spans는 "바뀐 것"이고, 번역이 보호해야 할 건 "있는 것 전부"다.
+# 보호 대상은 correct()가 돌려주는 spans를 그대로 쓴다. 별도로 다시 찾지 않는다.
 
-def test_protection_covers_terms_that_were_not_changed():
-    """이미 표준형이라 보정이 건드리지 않은 용어도 번역에선 보호해야 한다.
+def test_correction_spans_protect_terms_that_were_not_changed():
+    """이미 표준형이라 보정이 건드리지 않은 용어도 번역에선 가려져야 한다.
 
     risk2 실측에서 REST API가 'ReST APl'로, TypeScript가 'Type Type Type'으로
     무너졌다. 보정이 손댈 게 없었다고 해서 번역이 안전한 게 아니다.
     """
-    from devdemangle.correct import default_glossary
-    from devdemangle.translate.protect import spans_for_protection
+    from devdemangle.correct import correct, default_glossary
 
-    g = default_glossary()
-    assert [s.term for s in spans_for_protection("Docker 컨테이너 재시작할게.", g)] == ["Docker"]
-    assert [s.term for s in spans_for_protection("TypeScript 문법 에러라는데?", g)] == ["TypeScript"]
+    corrected = correct("TypeScript 문법 에러라는데?", default_glossary())
+    tr = Echo()
+    translate_protected(corrected.text, corrected.spans, tr)
 
-
-def test_protection_spans_point_at_the_right_place():
-    from devdemangle.correct import default_glossary
-    from devdemangle.translate.protect import spans_for_protection
-
-    text = "Docker 컨테이너 재시작할게."
-    span = spans_for_protection(text, default_glossary())[0]
-    assert text[span.start:span.end] == "Docker"
+    assert "TypeScript" not in tr.seen[0]
+    assert PLACEHOLDER_PREFIX in tr.seen[0]
 
 
-def test_protection_spans_do_not_overlap():
-    """겹친 채로 넘기면 mask()가 거부한다 — 여기서 이미 해소해 둔다."""
-    from devdemangle.correct import default_glossary
-    from devdemangle.translate.protect import spans_for_protection
+# ── 고정 번역어 ───────────────────────────────────────────────────
+# Glossary.translation_for()를 실제로 연결한다. 되돌릴 값(번역어)과
+# protected/lost에 보고하는 이름(canonical)은 갈릴 수 있다.
 
-    spans = spans_for_protection("npm install 하고 git commit 했어요", default_glossary())
-    for a, b in zip(spans, spans[1:]):
-        assert a.end <= b.start
+
+def test_translate_protected_uses_glossary_fixed_translation():
+    g = Glossary([Term("의존성 주입", translations={"en": "dependency injection"})])
+    tr = Echo(reply="I did it with TERMZERO.")
+    result = translate_protected(
+        "의존성 주입으로 했어요",
+        [_span(0, 6, "의존성 주입")],
+        tr,
+        glossary=g,
+    )
+    assert result.text == "I did it with dependency injection."
+
+
+def test_translate_protected_without_glossary_keeps_canonical():
+    """glossary를 생략하면 예전과 동일하게 canonical을 그대로 복원한다."""
+    tr = Echo(reply="I saw TERMZERO.")
+    result = translate_protected("GitHub 봤어요", [_span(0, 6, "GitHub")], tr)
+    assert result.text == "I saw GitHub."
+
+
+def test_translate_protected_falls_back_to_canonical_when_no_fixed_translation():
+    """대부분의 개발 용어는 번역하면 안 된다 — 고정 번역어가 없으면 원문 유지가 기본값이다."""
+    g = Glossary([Term("GitHub")])
+    tr = Echo(reply="I saw TERMZERO.")
+    result = translate_protected("GitHub 봤어요", [_span(0, 6, "GitHub")], tr, glossary=g)
+    assert result.text == "I saw GitHub."
+
+
+def test_translate_protected_reports_lost_using_canonical_not_translation():
+    """되돌릴 값과 보고할 이름이 다를 때, lost는 항상 canonical로 나온다."""
+    g = Glossary([Term("의존성 주입", translations={"en": "dependency injection"})])
+    tr = Echo(reply="I did it somehow.")  # TERMZERO가 사라졌다
+    result = translate_protected(
+        "의존성 주입으로 했어요",
+        [_span(0, 6, "의존성 주입")],
+        tr,
+        glossary=g,
+    )
+    assert result.lost == ["의존성 주입"]
+    assert "dependency injection" not in result.text
+    assert "TERMZERO" not in result.text
+
+
+def test_translate_protected_reported_protected_list_uses_canonical():
+    """protected 목록도 번역어가 아니라 canonical 기준이다."""
+    g = Glossary([Term("의존성 주입", translations={"en": "dependency injection"})])
+    tr = Echo(reply="TERMZERO")
+    result = translate_protected(
+        "의존성 주입", [_span(0, 6, "의존성 주입")], tr, glossary=g
+    )
+    assert result.protected == ["의존성 주입"]
+
+
+# ── unmask 내부 동작 ──────────────────────────────────────────────
+# mapping이 (플레이스홀더, 되돌릴 값, 보고할 이름) 3-tuple로 바뀐 것을 직접 검증한다.
+
+
+def test_unmask_restores_using_restore_value():
+    restored, lost = unmask(
+        "Hello TERMZERO",
+        [("TERMZERO", "dependency injection", "의존성 주입")],
+    )
+    assert restored == "Hello dependency injection"
+    assert lost == []
+
+
+def test_unmask_reports_report_value_when_lost():
+    restored, lost = unmask(
+        "Hello there",
+        [("TERMZERO", "dependency injection", "의존성 주입")],
+    )
+    assert restored == "Hello there"
+    assert lost == ["의존성 주입"]

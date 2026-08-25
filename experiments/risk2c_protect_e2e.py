@@ -14,7 +14,7 @@ import sys
 
 from devdemangle.correct import correct, default_glossary
 from devdemangle.translate.opusmt import OpusMTTranslator
-from devdemangle.translate.protect import spans_for_protection, translate_protected
+from devdemangle.translate.protect import translate_protected
 
 # risk1 §5의 「hotwords 있음」 전사문. STT를 다시 돌리지 않으려고 텍스트로 고정한다
 # (이 실험이 재는 건 번역 구간이지 전사 구간이 아니다).
@@ -56,12 +56,11 @@ def main() -> int:
 
     for text in TRANSCRIPTS:
         corrected = correct(text, glossary)
-        # 보호 대상은 "바뀐 것"이 아니라 "있는 것" 전부다 (spans_for_protection 참고).
-        guard = spans_for_protection(corrected.text, glossary)
-        if not guard:
+        # correct()의 spans는 바꾼 것뿐 아니라 이미 표준형이라 지킨 용어까지 담는다.
+        if not corrected.spans:
             continue
 
-        result = translate_protected(corrected.text, guard, translator)
+        result = translate_protected(corrected.text, corrected.spans, translator, glossary)
         naive = translator.translate(corrected.text)
 
         protected_total += len(result.protected)
