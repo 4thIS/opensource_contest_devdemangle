@@ -202,14 +202,14 @@ def _m(start, end, method=Method.EXACT, confidence=1.0, term="X"):
 
 
 def test_resolve_keeps_the_longer_match():
-    """1순위는 길이다. "npm install"과 "npm"이 겹치면 긴 쪽이 남는다."""
+    """method가 같으면 긴 쪽이 남는다. "npm install"과 "npm"은 둘 다 등록 용어다."""
     matches = [_m(0, 11, term="npm install"), _m(0, 3, term="npm")]
 
     assert resolve_overlaps(matches) == [_m(0, 11, term="npm install")]
 
 
 def test_resolve_prefers_exact_over_regex_at_same_length():
-    """길이가 같으면 method를 본다. 등록 용어가 정규식보다 앞선다."""
+    """등록 용어가 정규식보다 앞선다. 길이가 같아 method만으로 갈리는 경우다."""
     matches = [
         _m(0, 7, Method.REGEX, 0.8),
         _m(0, 7, Method.EXACT, 1.0),
@@ -248,7 +248,7 @@ def test_resolve_keeps_matches_that_do_not_overlap():
 def test_resolve_returns_start_ascending():
     """돌려주는 순서는 위치 오름차순이다.
 
-    고를 때는 길이·method 순으로 보지만 그 순서가 결과에 새어나오면 안 된다.
+    고를 때는 method·길이 순으로 보지만 그 순서가 결과에 새어나오면 안 된다.
     """
     matches = [_m(8, 11, term="C"), _m(0, 5, term="A"), _m(6, 7, term="B")]
 
