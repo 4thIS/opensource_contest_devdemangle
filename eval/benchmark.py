@@ -250,7 +250,9 @@ def main(argv: list[str] | None = None) -> int:
 
     RESULTS_DIR.mkdir(exist_ok=True)
     path = RESULTS_DIR / f"{args.date}.md"
-    path.write_text("\n".join(out) + "\n", encoding="utf-8")
+    # newline을 고정한다. Windows 기본값이면 CRLF로 써서, 돌릴 때마다 파일 전체가
+    # 바뀐 것처럼 보인다 — 저장소 나머지는 LF다.
+    path.write_text("\n".join(out) + "\n", encoding="utf-8", newline="\n")
     print("\n".join(out))
     print(f"\n→ {path}")
     return 0
