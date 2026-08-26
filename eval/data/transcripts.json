@@ -1,0 +1,647 @@
+[
+ {
+  "set": "1차",
+  "file": "seed_01.wav",
+  "speaker": "A",
+  "terms": [
+   "GitHub",
+   "repository"
+  ],
+  "off": "기터벳의 리포지토리 만들었어?",
+  "on": "GitHub에서의 리포지터리 만들었어."
+ },
+ {
+  "set": "1차",
+  "file": "seed_02.wav",
+  "speaker": "A",
+  "terms": [
+   "JSON"
+  ],
+  "off": "JSON 파일은 그대로인가?",
+  "on": "JSON 파일은 그대로인가?"
+ },
+ {
+  "set": "1차",
+  "file": "seed_03.wav",
+  "speaker": "A",
+  "terms": [
+   "Vue"
+  ],
+  "off": "뷰 컴포넌트를 다시 만들어야 해요",
+  "on": "뷰 컴포넌트를 다시 만들어야 해요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_04.wav",
+  "speaker": "A",
+  "terms": [
+   "npm install"
+  ],
+  "off": "npm install부터 진행해야지",
+  "on": "npm install부터 진행해야지."
+ },
+ {
+  "set": "1차",
+  "file": "seed_05.wav",
+  "speaker": "A",
+  "terms": [
+   "git commit"
+  ],
+  "off": "Git 커뮤니타가 걸렸어요.",
+  "on": "git commit 하고 알렸어요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_06.wav",
+  "speaker": "A",
+  "terms": [
+   "README"
+  ],
+  "off": "리듬이 수정되었습니다.",
+  "on": "리듬이 수정되었습니다."
+ },
+ {
+  "set": "1차",
+  "file": "seed_07.wav",
+  "speaker": "A",
+  "terms": [
+   "Docker"
+  ],
+  "off": "도커 컨테이너 재시작할게.",
+  "on": "Docker 컨테이너 재시작할게."
+ },
+ {
+  "set": "1차",
+  "file": "seed_08.wav",
+  "speaker": "B",
+  "terms": [
+   "TypeScript"
+  ],
+  "off": "TypeScript 문법 에러라는데?",
+  "on": "TypeScript 문법 에러라는데?"
+ },
+ {
+  "set": "1차",
+  "file": "seed_09.wav",
+  "speaker": "B",
+  "terms": [
+   "SQL"
+  ],
+  "off": "sql 문을 수정해야 합니다",
+  "on": "SQL 문을 수정해야 합니다."
+ },
+ {
+  "set": "1차",
+  "file": "seed_10.wav",
+  "speaker": "B",
+  "terms": [
+   "console.log"
+  ],
+  "off": "console.log를 한번 확인해 볼게요.",
+  "on": "console.log 한번 확인해 볼게요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_11.wav",
+  "speaker": "B",
+  "terms": [
+   "CSS"
+  ],
+  "off": "CSS 파일 새로 만들었어요.",
+  "on": "CSS 파일 새로 만들었어요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_12.wav",
+  "speaker": "B",
+  "terms": [
+   "REST API"
+  ],
+  "off": "REST API 응답이 드려요.",
+  "on": "REST API 응답이 드려요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_13.wav",
+  "speaker": "B",
+  "terms": [
+   "pull request"
+  ],
+  "off": "풀 리퀘스트 새로 올렸어요",
+  "on": "pull request 새로 올렸어요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_14.wav",
+  "speaker": "B",
+  "terms": [
+   "localhost"
+  ],
+  "off": "로컬 호스트로 들어가면 돼요.",
+  "on": "localhost 로 들어가면 돼요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_15.wav",
+  "speaker": "C",
+  "terms": [
+   "AWS"
+  ],
+  "off": "AWS 한번 배워보라고요",
+  "on": "AWS 한번 배워보라고요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_16.wav",
+  "speaker": "C",
+  "terms": [
+   "VS Code"
+  ],
+  "off": "vs 코드로 작업중이요",
+  "on": "VS Code로 작업 중이요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_17.wav",
+  "speaker": "C",
+  "terms": [
+   "FastAPI"
+  ],
+  "off": "베스트 API 서버 열었어.",
+  "on": "FastAPI 서버 열었어."
+ },
+ {
+  "set": "1차",
+  "file": "seed_18.wav",
+  "speaker": "C",
+  "terms": [
+   "Python"
+  ],
+  "off": "파일선으로 작성했어",
+  "on": "파일선으로 작성했어."
+ },
+ {
+  "set": "1차",
+  "file": "seed_19.wav",
+  "speaker": "C",
+  "terms": [
+   "React",
+   "TypeScript"
+  ],
+  "off": "리액트랑 타입스트리트 같이 쓰고 있어요.",
+  "on": "리액트랑 타입 스트릿을 같이 쓰고 있어요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_20.wav",
+  "speaker": "C",
+  "terms": [
+   "Docker"
+  ],
+  "off": "닷컬 배포했어요.",
+  "on": "Docker를 배포했어요."
+ },
+ {
+  "set": "1차",
+  "file": "seed_21.wav",
+  "speaker": "A",
+  "terms": [
+   "README"
+  ],
+  "off": "리듬이 파일 수정해 뒀어요.",
+  "on": "README 파일 수정해 뒀어요."
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_22.wav",
+  "speaker": "A",
+  "terms": [
+   "Docker"
+  ],
+  "off": "배포는 전부 도커",
+  "on": "배포는 전부 도커"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_23.wav",
+  "speaker": "A",
+  "terms": [
+   "console.log"
+  ],
+  "off": "마지막에 확인한 건 콘솔로그",
+  "on": "마지막에 확인한 건 console.log"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_24.wav",
+  "speaker": "A",
+  "terms": [
+   "React"
+  ],
+  "off": "지금 티비에서 쓰는게 리액터",
+  "on": "지금 티비에서 쓰는 게 React?"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_25.wav",
+  "speaker": "A",
+  "terms": [
+   "Python"
+  ],
+  "off": "뺄게 되는 점은 파이썬",
+  "on": "뺄게 되는 점은 파이썬"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_26.wav",
+  "speaker": "B",
+  "terms": [
+   "localhost"
+  ],
+  "off": "설정 파일은 로컬 호스트로",
+  "on": "설정 파일은 로컬 호스트로"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_27.wav",
+  "speaker": "B",
+  "terms": [
+   "GitHub"
+  ],
+  "off": "코드 리뷰는 기터브에서",
+  "on": "코드 리뷰는 GitHub에서"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_28.wav",
+  "speaker": "B",
+  "terms": [
+   "JSON"
+  ],
+  "off": "응답은 그냥 제이슨으로",
+  "on": "응답은 그냥 JSON으로"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_29.wav",
+  "speaker": "B",
+  "terms": [
+   "README"
+  ],
+  "off": "문서는 리듬이네",
+  "on": "문서는 README에"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_30.wav",
+  "speaker": "C",
+  "terms": [
+   "Docker"
+  ],
+  "off": "문제는 토커에서의 빌드속도",
+  "on": "문제는 토커에서의 빌드 속도"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_31.wav",
+  "speaker": "C",
+  "terms": [
+   "SQL"
+  ],
+  "off": "커리는 직접 짠 SQL로만",
+  "on": "Curry는 직접 짠 SQL로만"
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_32.wav",
+  "speaker": "C",
+  "terms": [
+   "Python"
+  ],
+  "off": "제 주력은 파일선입니다.",
+  "on": "제 주력은 파이썬입니다."
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_33.wav",
+  "speaker": "C",
+  "terms": [
+   "VS Code"
+  ],
+  "off": "지금 보이는 화면이 vs 코드에요",
+  "on": "지금 보이는 화면이 VS Code예요."
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_34a.wav",
+  "speaker": "A",
+  "terms": [
+   "lodash",
+   "debounce"
+  ],
+  "off": "러데쉬에 디바운스를 써서 처리했어요",
+  "on": "lodash의 debounce에서 처리했어요."
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_34b.wav",
+  "speaker": "A",
+  "terms": [
+   "lodash",
+   "debounce"
+  ],
+  "off": "라다씨의 디버즈서 처리했어요.",
+  "on": "Lada C의 디버즈서 처리했어요."
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_35.wav",
+  "speaker": "B",
+  "terms": [
+   "debounce"
+  ],
+  "off": "입력값은 디바운스 넣어놨어요",
+  "on": "입력값은 debounce 넣어놨어요."
+ },
+ {
+  "set": "문장끝",
+  "file": "seed_36.wav",
+  "speaker": "C",
+  "terms": [
+   "의존성 주입"
+  ],
+  "off": "그건 의존성 주입으로 풀었어요",
+  "on": "그건 의존성 주입으로 풀었어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_37.wav",
+  "speaker": "A",
+  "terms": [
+   "Node.js"
+  ],
+  "off": "Node.js 버전부터 올려야 해요.",
+  "on": "Node.js 버전부터 올려야 해요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_38.wav",
+  "speaker": "A",
+  "terms": [
+   "Java"
+  ],
+  "off": "이 모듈은 자바로 짜여 있어요",
+  "on": "이 모듈은 자바로 짜여있어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_39.wav",
+  "speaker": "A",
+  "terms": [
+   "Kotlin"
+  ],
+  "off": "란드로이드 쪽은 코트를 넘어갔어요.",
+  "on": "란테로이드 쪽은 코틀리로 넘어갔어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_40.wav",
+  "speaker": "A",
+  "terms": [
+   "Rust"
+  ],
+  "off": "성능 때문에 러스트 검토중이에요",
+  "on": "성능 때문에 Rust 검토 중이에요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_41.wav",
+  "speaker": "A",
+  "terms": [
+   "Spring"
+  ],
+  "off": "스프링 설정이 좀 복잡해요.",
+  "on": "스프링 설정이 좀 복잡해요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_42.wav",
+  "speaker": "A",
+  "terms": [
+   "Django"
+  ],
+  "off": "관리자 페이지는 D장고로 만들었어요.",
+  "on": "관리자 페이지는 D장고로 만들었어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_43.wav",
+  "speaker": "A",
+  "terms": [
+   "Next.js"
+  ],
+  "off": "프론트는 Next.jpg에 씁니다.",
+  "on": "Front는 Next.js에 씁니다."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_44.wav",
+  "speaker": "A",
+  "terms": [
+   "Express",
+   "미들웨어"
+  ],
+  "off": "익스프레스 미드웨어 하나 추가했어요",
+  "on": "Express Midware 하나 추가했어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_45.wav",
+  "speaker": "A",
+  "terms": [
+   "Flask"
+  ],
+  "off": "간단한 건 플라스틱으로 충분해요",
+  "on": "간단한 건 플라스틱으로 충분해요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_46.wav",
+  "speaker": "B",
+  "terms": [
+   "Kubernetes"
+  ],
+  "off": "쿠버 네티스 클러스터 상태 확인해 볼게요",
+  "on": "Kubernetes 클러스터 상태 확인해 볼게요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_47.wav",
+  "speaker": "B",
+  "terms": [
+   "Nginx"
+  ],
+  "off": "엔진X 설정 파일 고쳤어요.",
+  "on": "Nginx 설정 파일 고쳤어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_48.wav",
+  "speaker": "B",
+  "terms": [
+   "Redis"
+  ],
+  "off": "세션은 레디스에 넣어뒀어요.",
+  "on": "세션은 Redis에 넣어뒀어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_49.wav",
+  "speaker": "B",
+  "terms": [
+   "MongoDB"
+  ],
+  "off": "로그는 몽고 디비에 쌓고 있어요.",
+  "on": "로그는 몽고 디비에 쌓고 있어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_50.wav",
+  "speaker": "B",
+  "terms": [
+   "PostgreSQL"
+  ],
+  "off": "PostgresQL로 옮기는 중입니다.",
+  "on": "PostgreSQL로 옮기는 중입니다."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_51.wav",
+  "speaker": "B",
+  "terms": [
+   "Kafka"
+  ],
+  "off": "이벤트는 카프카로 흘려보내요",
+  "on": "이벤트는 카프카로 흘려보내요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_52.wav",
+  "speaker": "B",
+  "terms": [
+   "Elasticsearch"
+  ],
+  "off": "검색은 엘라스틱 서치가 맡아요",
+  "on": "검색은 엘라스틱 서치가 맡아요"
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_53.wav",
+  "speaker": "B",
+  "terms": [
+   "GitLab"
+  ],
+  "off": "저장소는 킷랩에 있어요",
+  "on": "저장소는 GitLab에 있어요"
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_54.wav",
+  "speaker": "B",
+  "terms": [
+   "Jenkins"
+  ],
+  "off": "젠킨스 빌드가 또 깨졌어요",
+  "on": "Jenkins 빌드가 또 깨졌어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_55.wav",
+  "speaker": "C",
+  "terms": [
+   "Postman"
+  ],
+  "off": "포스트맨으로 한번 질러 볼게요",
+  "on": "Postman으로 한번 질러볼게요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_56.wav",
+  "speaker": "C",
+  "terms": [
+   "Figma"
+  ],
+  "off": "디자인은 피그마에 올라와 있어요.",
+  "on": "디자인은 Figma에 올라와 있어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_57.wav",
+  "speaker": "C",
+  "terms": [
+   "IntelliJ"
+  ],
+  "off": "저는 인텔리제이를 쓰고 있어요",
+  "on": "저는 IntelliJ를 쓰고 있어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_58.wav",
+  "speaker": "C",
+  "terms": [
+   "webpack"
+  ],
+  "off": "웹팩 설정을 아직 못 건드렸어요",
+  "on": "웹팩 설정을 아직 못 건드렸어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_59.wav",
+  "speaker": "C",
+  "terms": [
+   "Swagger"
+  ],
+  "off": "API 문서는 Swagger로 뽑아요",
+  "on": "API 문서는 Swagger로 뽑아요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_60.wav",
+  "speaker": "C",
+  "terms": [
+   "Terraform"
+  ],
+  "off": "인프라는 테라폼으로 관리해요",
+  "on": "인프라는 테라폼으로 관리해요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_61.wav",
+  "speaker": "C",
+  "terms": [
+   "리팩터링"
+  ],
+  "off": "이번주는 리팩토링만 했어요",
+  "on": "이번주는 리팩터링만 했어요"
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_62.wav",
+  "speaker": "C",
+  "terms": [
+   "마이그레이션"
+  ],
+  "off": "데이터 마이그레이션이 제일 오래 걸렸어요",
+  "on": "데이터 마이그레이션이 제일 오래 걸렸어요."
+ },
+ {
+  "set": "용어확장",
+  "file": "seed_63.wav",
+  "speaker": "C",
+  "terms": [
+   "미들웨어"
+  ],
+  "off": "그 로직은 미들베어로 뺐어요",
+  "on": "그 로직은 미들웨어로 뺐어요."
+ }
+]
