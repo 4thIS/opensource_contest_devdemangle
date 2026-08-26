@@ -1,19 +1,23 @@
-"""Gradio 데모 — 마이크로 말하면 용어를 지켜서 자막과 번역을 보여준다.
+"""Gradio 데모 — 말하거나 문장을 넣으면 용어를 지켜서 자막과 번역을 보여준다.
 
-    uv run --extra demo --extra cuda python -m devdemangle.app
+    uv run --extra demo --extra cuda --extra translate python -m devdemangle.app
 
-**gradio는 최상위에서 import하지 않는다.** `highlight()`는 순수 함수라 gradio 없이
+**gradio는 최상위에서 import하지 않는다.** 화면을 만드는 순수 함수들은 gradio 없이
 테스트하고, UI 조립은 `main()` 안에서만 gradio를 가져간다. `stt`·`translate`
 서브패키지와 같은 방식이다 — 코어를 떼어 쓰는 사람에게 UI 라이브러리를 지우지 않는다.
 
-화면이 보여줘야 하는 것은 셋이다.
+화면이 보여줘야 하는 것은 넷이다.
 
-    마이크에서 들어온 말이 어떻게 전사됐나          raw
-    무엇을 지켰나 — 어디를 어떻게 찾았는지           spans 하이라이트
-    그 용어가 번역에서도 살아남았나                 translated
+    ① 들어온 문장 — 음성이면 받아쓴 결과            raw
+    ② 이대로 번역하면 (가리지 않음)                 비교 대상
+    ③ 무엇을 지켰나 — 어디를 어떻게 찾았는지          spans 하이라이트
+    ④ 그 용어가 번역에서도 살아남았나                translated
 
-가운데가 핵심이다. 보정된 문장만 보여주면 "번역기 하나 더"로 보이고,
-**어디를 우리가 지켰는지가 눈에 보여야** 차별점이 전달된다.
+**②가 있어야 ④가 뭘 했는지 보인다.** 지켜낸 결과만 띄우면 "번역기 하나 더"로 보인다.
+둘은 같은 번역기에 같은 문장을 넣고 **용어를 가렸는지만** 다르다.
+
+**입력은 음성과 글자 둘 다 받는다.** 명령행 플래그처럼 소리로 받기 애매한 것을
+넣어볼 수 있어야 하고, 코어가 문자열만으로 돈다는 것도 그 자리에서 보인다.
 """
 
 from devdemangle.types import Span
@@ -67,6 +71,53 @@ def term_rows(spans: list[Span]) -> list[list[str]]:
     ]
 
 
+NO_TRANSLATOR = "(번역 없이 실행 중입니다)"
+
+
+def pick_source(audio_path, text: str | None) -> tuple[str, str]:
+    """음성과 글자 중 무엇으로 돌릴지 고른다.
+
+    **손으로 친 쪽이 우선이다.** 앞 시연의 음성이 입력칸에 남아 있어도, 방금 친 문장이
+    방금 의도한 것이다. 공백만 남은 칸은 비어 있는 것으로 본다 — 그것 때문에
+    음성이 무시되면 이유를 찾기 어렵다.
+    """
+    typed = (text or "").strip()
+    if typed:
+        return "text", typed
+    if audio_path:
+        return "audio", audio_path
+    return "none", ""
+
+
+def view(result, translator):
+    """파이프라인 결과를 화면 네 칸과 표 하나로 펼친다.
+
+    **보호 없는 번역을 같이 낸다.** 화면에 지켜낸 결과만 띄우면 무엇을 지켰는지가
+    안 보인다 — 비교 대상이 있어야 보호 계층이 한 일이 드러난다.
+
+    비교가 성립하려면 **같은 모델에 같은 문장**을 넣어야 한다. 그래서 `raw`가 아니라
+    보정된 문장(`corrected`)을 가리지 않고 그대로 넘긴다. 원문을 넘기면 STT 오류까지
+    섞여서, 차이가 보호 때문인지 전사 때문인지 갈라낼 수 없다.
+
+    UI 조립과 떼어 둔 이유는 gradio 없이 테스트하기 위해서다.
+    """
+    if translator is None:
+        unprotected = protected = NO_TRANSLATOR
+    else:
+        unprotected = translator.translate(result.corrected)
+        protected = result.translated or NO_TRANSLATOR
+        if result.lost:
+            protected += f"\n\n⚠️ 번역이 삼킨 용어: {', '.join(result.lost)}"
+
+    return (
+        result.raw,
+        highlight(result.corrected, result.spans),
+        unprotected,
+        protected,
+        term_rows(result.spans),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
     import sys
@@ -92,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
 
     from devdemangle.correct import default_glossary
     from devdemangle.hotwords import WithoutHotwords
-    from devdemangle.pipeline import run
+    from devdemangle.pipeline import run, run_text
     from devdemangle.stt import WhisperSTT
 
     glossary = default_glossary()
@@ -108,38 +159,53 @@ def main(argv: list[str] | None = None) -> int:
         translator = OpusMTTranslator()
     print("준비 끝.", flush=True)
 
-    def analyze(audio_path):
-        if not audio_path:
-            return "", [], "", []
+    def analyze(audio_path, typed):
+        kind, source = pick_source(audio_path, typed)
+        if kind == "none":
+            return "말하거나 파일을 올리거나, 아래 칸에 문장을 넣으세요.", [], "", "", []
 
-        result = run(audio_path, stt=stt, glossary=glossary, translator=translator)
-        translated = result.translated or "(번역 없이 실행 중입니다)"
-        if result.lost:
-            translated += f"\n\n⚠️ 번역이 삼킨 용어: {', '.join(result.lost)}"
+        try:
+            if kind == "text":
+                result = run_text(source, glossary, translator)
+            else:
+                result = run(source, stt=stt, glossary=glossary, translator=translator)
+        except Exception as exc:  # 시연 중에 스택 대신 읽을 수 있는 말이 뜨게 한다
+            return f"처리하지 못했습니다: {exc}", [], "", "", []
 
-        return result.raw, highlight(result.corrected, result.spans), translated, term_rows(result.spans)
+        return view(result, translator)
 
     with gr.Blocks(title="DevDemangle") as demo:
         gr.Markdown(
             "# DevDemangle\n"
-            "음성인식과 번역이 뭉갠 개발 용어를 되돌립니다. "
-            "**색이 칠해진 부분이 지켜낸 용어**이고, 색은 어떻게 찾았는지에 따라 갈립니다."
+            "음성인식과 번역이 뭉갠 개발 용어를 되돌립니다.\n\n"
+            "**②와 ④를 나란히 보십시오.** 같은 문장을 같은 번역기에 넣고 **용어를 가렸는지만** "
+            "다릅니다. **색이 칠해진 부분이 지켜낸 용어**이고, 색은 어떻게 찾았는지에 따라 갈립니다."
         )
 
         audio = gr.Audio(sources=["microphone", "upload"], type="filepath", label="말하거나 파일을 올리세요")
+        typed = gr.Textbox(
+            label="또는 문장을 직접 넣으세요 — 음성 없이 코어만 돌립니다",
+            placeholder="빌드할 때 --no-cache 붙여서 돌려보세요",
+            lines=2,
+        )
         go = gr.Button("분석", variant="primary")
 
-        raw = gr.Textbox(label="① 음성인식이 받아쓴 그대로", lines=2, interactive=False)
-        marked = gr.HighlightedText(label="② 보정 결과 — 색칠된 곳이 지켜낸 용어", combine_adjacent=False)
-        translated = gr.Textbox(label="③ 번역 (용어 보호 적용)", lines=3, interactive=False)
+        raw = gr.Textbox(label="① 들어온 문장 — 음성이면 받아쓴 결과", lines=2, interactive=False)
+        plain = gr.Textbox(label="② 이대로 번역하면 — 보호 없음", lines=2, interactive=False)
+        marked = gr.HighlightedText(label="③ 보정 결과 — 색칠된 곳이 지켜낸 용어", combine_adjacent=False)
+        translated = gr.Textbox(label="④ 번역 — 용어 보호 적용", lines=3, interactive=False)
         table = gr.Dataframe(
             headers=["표준형", "말한 그대로", "찾은 방법", "신뢰도"],
             label="찾은 용어",
             interactive=False,
         )
 
-        go.click(analyze, inputs=audio, outputs=[raw, marked, translated, table])
-        audio.stop_recording(analyze, inputs=audio, outputs=[raw, marked, translated, table])
+        # 순서는 view()가 돌려주는 순서와 같아야 한다 — 어긋나면 칸이 뒤바뀐다.
+        outputs = [raw, marked, plain, translated, table]
+        inputs = [audio, typed]
+        go.click(analyze, inputs=inputs, outputs=outputs)
+        audio.stop_recording(analyze, inputs=inputs, outputs=outputs)
+        typed.submit(analyze, inputs=inputs, outputs=outputs)
 
     demo.launch(share=args.share)
     return 0

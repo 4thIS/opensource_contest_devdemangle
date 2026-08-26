@@ -143,3 +143,41 @@ def test_run_translates_using_glossary_fixed_translation():
     tr = FakeTranslator("I solved it with TERMZERO.")
     result = run(Path("dummy.wav"), stt=fake, glossary=glossary, translator=tr)
     assert result.translated == "I solved it with dependency injection."
+
+
+from devdemangle.pipeline import run_text
+
+
+def test_run_text_corrects_without_any_audio():
+    """음성 없이 문자열만으로 같은 처리를 탄다.
+
+    데모 화면의 텍스트 입력이 이 경로를 쓴다. 명령행 플래그처럼 **소리로 받기
+    애매한 것**을 보여줄 때 필요하다.
+    """
+    result = run_text("깃허브 레포지토리 만들었어?")
+    assert result.corrected == "GitHub repository 만들었어?"
+
+
+def test_run_text_keeps_the_input_as_raw():
+    """들어온 문장을 그대로 남긴다 — 화면 첫 칸이 이것을 쓴다."""
+    assert run_text("깃허브 봤어요").raw == "깃허브 봤어요"
+
+
+def test_run_text_finds_unregistered_identifiers():
+    """용어집에 없는 식별자는 모양으로 잡고 **바꾸지는 않는다.**"""
+    result = run_text("빌드할 때 --no-cache 붙여서 돌려보세요")
+    assert result.corrected == "빌드할 때 --no-cache 붙여서 돌려보세요"
+    assert [(s.term, str(s.method)) for s in result.spans] == [("--no-cache", "regex")]
+
+
+def test_run_text_translates_with_terms_protected():
+    tr = FakeTranslator("I saw TERMZERO.")
+    result = run_text("깃허브 봤어요", translator=tr)
+    assert tr.seen == ["TERMZERO 봤어요"]
+    assert result.translated == "I saw GitHub."
+
+
+def test_run_text_respects_the_threshold():
+    glossary = Glossary([Term(canonical="Docker", aliases=("도커",))])
+    assert run_text("닷커 컨테이너", glossary, threshold=0.70).corrected == "Docker 컨테이너"
+    assert run_text("닷커 컨테이너", glossary, threshold=0.95).corrected == "닷커 컨테이너"

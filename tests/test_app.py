@@ -75,3 +75,78 @@ def test_spans_out_of_order_are_still_placed_correctly():
 
     assert "".join(c for c, _ in highlight(text, spans)) == text
     assert [label for _, label in highlight(text, spans)] == ["exact", None, "exact"]
+
+
+from devdemangle.app import view
+from devdemangle.pipeline import PipelineResult
+
+
+class _Translator:
+    """넘어온 문장을 기록하고 정해둔 답을 준다."""
+
+    def __init__(self, reply: str) -> None:
+        self._reply = reply
+        self.seen: list[str] = []
+
+    def translate(self, text: str) -> str:
+        self.seen.append(text)
+        return self._reply
+
+
+def _result(**kw):
+    base = dict(raw="러데쉬 썼어요", corrected="lodash 썼어요",
+                spans=[_span(0, 6, "lodash", "러데쉬")], translated="I used lodash.", lost=[])
+    return PipelineResult(**(base | kw))
+
+
+def test_view_shows_what_speech_recognition_wrote():
+    assert view(_result(), _Translator("x"))[0] == "러데쉬 썼어요"
+
+
+def test_view_translates_the_corrected_text_without_masking():
+    """보호 없는 번역은 **가리지 않은** 보정 문장을 그대로 넘겨 얻는다.
+
+    같은 모델·같은 문장이라 차이가 보호 여부 하나로 고정된다.
+    원문(raw)을 넘기면 STT 오류까지 섞여 비교가 성립하지 않는다.
+    """
+    tr = _Translator("I used it.")
+    unprotected = view(_result(), tr)[2]
+    assert tr.seen == ["lodash 썼어요"]
+    assert unprotected == "I used it."
+
+
+def test_view_puts_protected_translation_in_its_own_box():
+    assert view(_result(), _Translator("x"))[3] == "I used lodash."
+
+
+def test_view_without_translator_says_so_in_both_boxes():
+    """번역기를 안 올린 실행에서도 화면이 비지 않는다."""
+    _, _, unprotected, protected, _ = view(_result(translated=None, lost=None), None)
+    assert "번역 없이" in unprotected
+    assert "번역 없이" in protected
+
+
+def test_view_warns_about_terms_the_translation_swallowed():
+    _, _, _, protected, _ = view(_result(translated="I used it.", lost=["lodash"]), _Translator("x"))
+    assert "lodash" in protected and "⚠️" in protected
+
+
+from devdemangle.app import pick_source
+
+
+def test_pick_source_prefers_typed_text():
+    """둘 다 들어 있으면 손으로 친 쪽을 쓴다 — 방금 친 것이 방금 의도한 것이다."""
+    assert pick_source("a.wav", "  --no-cache 줬어  ") == ("text", "--no-cache 줬어")
+
+
+def test_pick_source_falls_back_to_audio():
+    assert pick_source("a.wav", "") == ("audio", "a.wav")
+
+
+def test_pick_source_ignores_whitespace_only_text():
+    """공백만 남은 입력칸 때문에 음성이 무시되면 안 된다."""
+    assert pick_source("a.wav", "   \n ") == ("audio", "a.wav")
+
+
+def test_pick_source_reports_nothing_to_do():
+    assert pick_source(None, "") == ("none", "")
