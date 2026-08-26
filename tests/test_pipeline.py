@@ -99,3 +99,47 @@ def test_pipeline_result_is_a_dataclass_with_three_fields():
     result = run(Path("dummy.wav"), stt=fake)
     assert isinstance(result, PipelineResult)
     assert result.raw and result.corrected and result.spans
+
+
+class FakeTranslator:
+    """받은 문장을 기록하고 정해둔 답을 돌려준다."""
+
+    def __init__(self, reply: str) -> None:
+        self._reply = reply
+        self.seen: list[str] = []
+
+    def translate(self, text: str) -> str:
+        self.seen.append(text)
+        return self._reply
+
+
+def test_run_without_translator_leaves_translation_empty():
+    """번역은 선택이다 — 안 넘기면 STT·보정만 돌고 끝난다."""
+    result = run(Path("dummy.wav"), stt=FakeSTT("깃허브 봤어요"))
+    assert result.translated is None
+
+
+def test_run_translates_with_terms_protected():
+    """번역기에는 용어가 아니라 플레이스홀더가 가야 한다."""
+    fake = FakeSTT("깃허브 봤어요")
+    tr = FakeTranslator("I saw TERMZERO.")
+    result = run(Path("dummy.wav"), stt=fake, translator=tr)
+
+    assert tr.seen == ["TERMZERO 봤어요"]   # 보정된 텍스트를 가려서 넘겼다
+    assert result.translated == "I saw GitHub."
+
+
+def test_run_reports_terms_lost_in_translation():
+    fake = FakeSTT("깃허브 봤어요")
+    tr = FakeTranslator("I saw it.")  # 플레이스홀더가 사라졌다
+    result = run(Path("dummy.wav"), stt=fake, translator=tr)
+    assert result.lost == ["GitHub"]
+
+
+def test_run_translates_using_glossary_fixed_translation():
+    """용어집의 고정 번역어가 번역 경로까지 이어진다."""
+    fake = FakeSTT("의존성 주입으로 풀었어요")
+    glossary = Glossary([Term(canonical="의존성 주입", translations={"en": "dependency injection"})])
+    tr = FakeTranslator("I solved it with TERMZERO.")
+    result = run(Path("dummy.wav"), stt=fake, glossary=glossary, translator=tr)
+    assert result.translated == "I solved it with dependency injection."

@@ -133,6 +133,25 @@ def test_already_canonical_is_left_alone():
     assert _pairs(result) == [("SQL", "SQL")]
 
 
+def test_span_points_at_the_right_place_in_result_text():
+    """번역 보호는 이 좌표로 mask()를 부른다 — 한 칸만 어긋나도 엉뚱한 글자를 가린다."""
+    glossary = Glossary([Term(canonical="Docker")])
+    text = "Docker 컨테이너 재시작할게."
+    result = correct(text, glossary)
+    span = result.spans[0]
+    assert text[span.start:span.end] == "Docker"
+
+
+def test_spans_do_not_overlap():
+    """mask()는 겹친 span을 거부한다 — correct()가 여기서 이미 겹침을 해소해 둔다."""
+    from devdemangle.correct import default_glossary
+
+    result = correct("npm install 하고 git commit 했어요", default_glossary())
+    assert len(result.spans) >= 2  # 여러 용어가 잡혀야 겹침 검증이 의미 있다
+    for a, b in zip(result.spans, result.spans[1:]):
+        assert a.end <= b.start
+
+
 def test_span_keeps_source_casing_in_matched():
     """치환은 표준형으로 하되, 무엇을 바꿨는지는 원문 그대로 남긴다."""
     glossary = Glossary([Term(canonical="VS Code", aliases=("VS Code", "브이에스 코드"))])
