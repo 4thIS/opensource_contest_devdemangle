@@ -67,7 +67,7 @@ def detect(text: str, glossary: Glossary) -> list[Match]:
         for end_idx, (length, canonical) in automaton.iter(_fold(text)):
             start = end_idx - length + 1
             end = end_idx + 1
-            if not _starts_token(text, start) or not _ends_token(text, end):
+            if not starts_token(text, start) or not _ends_token(text, end):
                 continue
             matches.append(
                 Match(start, end, canonical, text[start:end], Method.EXACT, 1.0)
@@ -75,7 +75,7 @@ def detect(text: str, glossary: Glossary) -> list[Match]:
 
     for found in IDENTIFIER.finditer(text):
         start, end = found.span()
-        if not _starts_token(text, start) or not _ends_token(text, end):
+        if not starts_token(text, start) or not _ends_token(text, end):
             continue
         name = found.group()
         matches.append(Match(start, end, name, name, Method.REGEX, REGEX_CONFIDENCE))
@@ -87,9 +87,10 @@ def detect(text: str, glossary: Glossary) -> list[Match]:
 def resolve_overlaps(matches: list[Match]) -> list[Match]:
     """겹치는 후보 중 하나만 남긴다.
 
-    순서는 ①길이 ②method ③신뢰도 ④위치다. 길이가 앞서는 게 중요하다 —
-    "npm install"과 "npm"은 둘 다 exact에 신뢰도 1.0이라 길이를 안 보면
-    짧은 쪽이 남을 수 있다.
+    순서는 ①method ②길이 ③신뢰도 ④위치다. method가 앞서는 게 중요하다 —
+    긴 정규식이 짧은 등록 용어를 이기면 안 되고, 어절을 통째로 잡는 소리 추정이
+    조사를 뗀 등록 용어를 밀어내서도 안 된다. "npm install"과 "npm"은 둘 다
+    exact라 method가 같고, 그다음 길이에서 긴 쪽이 남는다.
 
     detect()에서 떼어 둔 이유는 퍼지 때문이다. 소리 유사도로 찾은 후보는
     탐지가 끝난 뒤에 합쳐지는데, 탐지가 미리 정리해 버리면 그때 버린 후보를
@@ -108,15 +109,26 @@ def resolve_overlaps(matches: list[Match]) -> list[Match]:
 
 
 def _priority(m: Match) -> tuple:
-    """겹침에서 이기는 순서. 작을수록 먼저 고른다."""
-    return (-(m.end - m.start), METHOD_RANK[m.method], -m.confidence, m.start)
+    """겹침에서 이기는 순서. 작을수록 먼저 고른다.
+
+    **method가 길이보다 먼저다.** 길이를 먼저 보면 두 가지가 무너진다 —
+    긴 정규식이 짧은 등록 용어를 이기고(등록 용어 우선 규칙 위반),
+    어절을 통째로 잡는 소리 추정이 조사를 뗀 등록 용어를 밀어낸다.
+
+    "npm install"과 "npm"은 둘 다 등록 용어라 method가 같고, 그다음 길이에서
+    갈린다 — 긴 쪽이 남는 규칙은 그대로 지켜진다.
+    """
+    return (METHOD_RANK[m.method], -(m.end - m.start), -m.confidence, m.start)
 
 
-def _starts_token(text: str, start: int) -> bool:
+def starts_token(text: str, start: int) -> bool:
     """매치 시작이 토큰 시작과 같은가.
 
     시작 경계는 완화하지 않는다. 한국어에서 앞에 붙는 건 조사가 아니라
     다른 단어라, 허용하면 "윈도커널"의 "도커"까지 걸린다.
+
+    소리 탐지도 같은 판정을 써야 해서 공개한다. 규칙을 두 벌 두면 한쪽만
+    고쳤을 때 두 모듈이 다르게 동작하고, 그건 문장을 넣어보기 전에는 드러나지 않는다.
     """
     return start == 0 or not text[start - 1].isalnum()
 

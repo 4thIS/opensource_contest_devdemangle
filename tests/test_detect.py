@@ -202,14 +202,14 @@ def _m(start, end, method=Method.EXACT, confidence=1.0, term="X"):
 
 
 def test_resolve_keeps_the_longer_match():
-    """1순위는 길이다. "npm install"과 "npm"이 겹치면 긴 쪽이 남는다."""
+    """method가 같으면 긴 쪽이 남는다. "npm install"과 "npm"은 둘 다 등록 용어다."""
     matches = [_m(0, 11, term="npm install"), _m(0, 3, term="npm")]
 
     assert resolve_overlaps(matches) == [_m(0, 11, term="npm install")]
 
 
 def test_resolve_prefers_exact_over_regex_at_same_length():
-    """길이가 같으면 method를 본다. 등록 용어가 정규식보다 앞선다."""
+    """등록 용어가 정규식보다 앞선다. 길이가 같아 method만으로 갈리는 경우다."""
     matches = [
         _m(0, 7, Method.REGEX, 0.8),
         _m(0, 7, Method.EXACT, 1.0),
@@ -248,7 +248,7 @@ def test_resolve_keeps_matches_that_do_not_overlap():
 def test_resolve_returns_start_ascending():
     """돌려주는 순서는 위치 오름차순이다.
 
-    고를 때는 길이·method 순으로 보지만 그 순서가 결과에 새어나오면 안 된다.
+    고를 때는 method·길이 순으로 보지만 그 순서가 결과에 새어나오면 안 된다.
     """
     matches = [_m(8, 11, term="C"), _m(0, 5, term="A"), _m(6, 7, term="B")]
 
@@ -402,3 +402,33 @@ def test_homonym_aliases_currently_false_positive(seed_glossary, sentence, forbi
     """
     found = {m.term for m in detect(sentence, seed_glossary) if m.method is Method.EXACT}
     assert forbidden not in found
+
+
+def test_resolve_prefers_exact_even_when_the_other_is_longer():
+    """길이보다 method가 먼저다 — 긴 소리 추정이 짧은 등록 용어를 이기면 안 된다.
+
+    등록 탐지는 경계 규칙에 맞는 구간만 내보내고, 소리 추정은 어절을 통째로 잡는
+    경향이 있어 더 길어진다. 길이를 먼저 보면 "도커를"(fuzzy)이 "도커"(exact)를
+    밀어내고, 치환에서 조사가 함께 사라진다.
+    """
+    matches = [
+        _m(0, 3, Method.FUZZY, 0.95, term="Docker"),
+        _m(0, 2, Method.EXACT, 1.0, term="Docker"),
+    ]
+
+    assert resolve_overlaps(matches) == [_m(0, 2, Method.EXACT, 1.0, term="Docker")]
+
+
+def test_resolve_prefers_exact_even_when_regex_is_longer():
+    """정규식이 더 길어도 등록 용어가 앞선다.
+
+    등록 용어가 정규식보다 우선한다는 규칙과, 겹치면 긴 쪽을 남긴다는 규칙이
+    충돌하는 자리다. 등록 용어 쪽을 택한다 — 정규식은 모양만 보고 잡은 추정이고
+    용어집은 사람이 확인해 넣은 것이다.
+    """
+    matches = [
+        _m(0, 10, Method.REGEX, 0.8, term="get_user_id"),
+        _m(0, 3, Method.EXACT, 1.0, term="SQL"),
+    ]
+
+    assert resolve_overlaps(matches) == [_m(0, 3, Method.EXACT, 1.0, term="SQL")]

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Protocol
 
 from devdemangle.correct import correct, default_glossary
+from devdemangle.fuzzy import DEFAULT_THRESHOLD
 from devdemangle.glossary import Glossary
 from devdemangle.hotwords import build as build_hotwords
 from devdemangle.types import Span
@@ -27,6 +28,8 @@ def run(
     audio_path: Path,
     stt: STT | None = None,
     glossary: Glossary | None = None,
+    *,
+    threshold: float = DEFAULT_THRESHOLD,
 ) -> PipelineResult:
     """음성 → 전사 → 용어 보정.
 
@@ -35,6 +38,10 @@ def run(
 
     stt를 생략하면 WhisperSTT를 만든다. 생성 시점에 모델을 올리므로(GPU 필요)
     필요할 때까지 미룬다 — 테스트는 가짜를 주입해 이 경로를 타지 않는다.
+
+    Args:
+        threshold: 소리 유사도 하한. correct()로 그대로 넘긴다 — 용어집을 바꾸면
+            안전 구간이 움직이므로, 음성에서 들어오는 경로에도 통로를 둔다.
     """
     terms = glossary if glossary is not None else default_glossary()
     hotwords = build_hotwords(terms)
@@ -45,5 +52,5 @@ def run(
         stt = WhisperSTT()
 
     raw = stt.transcribe(audio_path, hotwords=hotwords)
-    result = correct(raw, glossary)
+    result = correct(raw, glossary, threshold=threshold)
     return PipelineResult(raw=raw, corrected=result.text, spans=result.spans)

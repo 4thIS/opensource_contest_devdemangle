@@ -60,6 +60,33 @@ def test_run_accepts_custom_glossary():
     assert result.corrected == "Docker 씁니다"
 
 
+def test_run_lowers_threshold_to_catch_weaker_sounds():
+    """임계값을 내리면 기본값에서 놓치던 것을 잡는다.
+
+    "닷커"는 별칭 "도커"와 0.727이라 기본값 0.78에 못 미친다.
+    """
+    fake = FakeSTT("닷커 컨테이너")
+    glossary = Glossary([Term(canonical="Docker", aliases=("도커",))])
+
+    result = run(Path("dummy.wav"), stt=fake, glossary=glossary, threshold=0.70)
+
+    assert result.corrected == "Docker 컨테이너"
+
+
+def test_run_raises_threshold_to_be_stricter():
+    """임계값을 올리면 기본값에서 잡히던 것도 버린다.
+
+    용어집을 늘리면 안전 구간이 움직인다 — 그때 파이프라인을 타는 경로에서도
+    새 값을 쓸 수 있어야 한다. "더커"는 0.909라 기본값에서는 잡힌다.
+    """
+    fake = FakeSTT("더커 컨테이너")
+    glossary = Glossary([Term(canonical="Docker", aliases=("도커",))])
+
+    result = run(Path("dummy.wav"), stt=fake, glossary=glossary, threshold=0.95)
+
+    assert result.corrected == "더커 컨테이너"
+
+
 def test_run_with_no_matches_returns_text_unchanged():
     fake = FakeSTT("오늘 날씨 좋네요")
     result = run(Path("dummy.wav"), stt=fake)
