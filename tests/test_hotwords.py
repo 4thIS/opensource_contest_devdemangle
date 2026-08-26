@@ -39,3 +39,32 @@ def test_default_budget_covers_seed_glossary():
     # 표준형에 공백이 든 것이 있어(`npm install`) 단어 수로는 못 센다. 원문 그대로 나와야 한다.
     assert build(glossary) == " ".join(t.canonical for t in glossary)
     assert DEFAULT_BUDGET == 224
+
+
+from devdemangle.hotwords import WithoutHotwords
+
+
+class _Recorder:
+    """넘어온 hotwords를 기록하는 가짜 STT."""
+
+    def __init__(self) -> None:
+        self.seen: list[str | None] = []
+
+    def transcribe(self, audio, hotwords: str | None = None) -> str:
+        self.seen.append(hotwords)
+        return "전사 결과"
+
+
+def test_without_hotwords_drops_the_hint():
+    """파이프라인이 만들어 넘긴 hotwords를 버린다.
+
+    끄는 분기를 파이프라인 안에 두지 않기 위한 것이다 — 감싸서 버린다.
+    """
+    inner = _Recorder()
+    WithoutHotwords(inner).transcribe("a.wav", hotwords="Docker GitHub")
+    assert inner.seen == [None]
+
+
+def test_without_hotwords_still_passes_the_audio_through():
+    inner = _Recorder()
+    assert WithoutHotwords(inner).transcribe("a.wav") == "전사 결과"

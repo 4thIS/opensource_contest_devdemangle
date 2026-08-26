@@ -76,6 +76,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--device", default="cuda", help="추론 장치 (기본 cuda)")
     parser.add_argument("--compute", default="float16", help="정밀도 (VRAM 부족 시 int8_float16)")
     parser.add_argument("--no-translate", action="store_true", help="번역 없이 보정만")
+    parser.add_argument(
+        "--no-hotwords",
+        action="store_true",
+        help="hotwords 없이 전사한다. 시연에서 보정 효과를 보이려면 이 옵션을 쓴다",
+    )
     parser.add_argument("--share", action="store_true", help="공개 링크 생성")
     args = parser.parse_args(argv)
 
@@ -86,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     from devdemangle.correct import default_glossary
+    from devdemangle.hotwords import WithoutHotwords
     from devdemangle.pipeline import run
     from devdemangle.stt import WhisperSTT
 
@@ -93,6 +99,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"용어 {len(glossary)}개 로딩 완료. 모델을 올립니다...", flush=True)
 
     stt = WhisperSTT(model_size=args.model, device=args.device, compute_type=args.compute)
+    if args.no_hotwords:
+        stt = WithoutHotwords(stt)
     translator = None
     if not args.no_translate:
         from devdemangle.translate.opusmt import OpusMTTranslator
