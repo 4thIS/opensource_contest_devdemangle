@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 translate = ["transformers>=5.0", "torch>=2.13", "sentencepiece>=0.2", "sacremoses>=0.1"]
 cuda = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12==9.*"]
+demo = ["gradio>=5.0"]
 dev = ["pytest>=8.0"]
 
 [build-system]
