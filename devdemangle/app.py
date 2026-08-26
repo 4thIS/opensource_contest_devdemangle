@@ -174,30 +174,40 @@ def main(argv: list[str] | None = None) -> int:
 
         return view(result, translator)
 
+    # 녹화 화면(1280×960)에 한 번에 담기게 좌우로 나눈다. 세로로 쌓으면 표가 잘리고,
+    # 잘린 채로 찍으면 "②와 ④를 나란히 본다"는 이 화면의 목적이 사라진다.
     with gr.Blocks(title="DevDemangle") as demo:
         gr.Markdown(
-            "# DevDemangle\n"
-            "음성인식과 번역이 뭉갠 개발 용어를 되돌립니다.\n\n"
-            "**②와 ④를 나란히 보십시오.** 같은 문장을 같은 번역기에 넣고 **용어를 가렸는지만** "
-            "다릅니다. **색이 칠해진 부분이 지켜낸 용어**이고, 색은 어떻게 찾았는지에 따라 갈립니다."
+            "## DevDemangle &nbsp;&nbsp;<sub>음성인식과 번역이 뭉갠 개발 용어를 되돌립니다</sub>\n"
+            "**②와 ④를 나란히 보십시오.** 같은 번역기에 같은 문장을 넣고 **용어를 가렸는지만** 다릅니다."
         )
 
-        audio = gr.Audio(sources=["microphone", "upload"], type="filepath", label="말하거나 파일을 올리세요")
-        typed = gr.Textbox(
-            label="또는 문장을 직접 넣으세요 — 음성 없이 코어만 돌립니다",
-            placeholder="빌드할 때 --no-cache 붙여서 돌려보세요",
-            lines=2,
-        )
-        go = gr.Button("분석", variant="primary")
+        with gr.Row():
+            with gr.Column(scale=2):
+                audio = gr.Audio(
+                    sources=["microphone", "upload"], type="filepath",
+                    label="말하거나 파일을 올리세요",
+                )
+                typed = gr.Textbox(
+                    label="또는 문장을 직접 — 음성 없이 코어만 돌립니다",
+                    placeholder="빌드할 때 --no-cache 붙여서 돌려보세요",
+                    lines=2,
+                )
+                go = gr.Button("분석", variant="primary")
 
-        raw = gr.Textbox(label="① 들어온 문장 — 음성이면 받아쓴 결과", lines=2, interactive=False)
-        plain = gr.Textbox(label="② 이대로 번역하면 — 보호 없음", lines=2, interactive=False)
-        marked = gr.HighlightedText(label="③ 보정 결과 — 색칠된 곳이 지켜낸 용어", combine_adjacent=False)
-        translated = gr.Textbox(label="④ 번역 — 용어 보호 적용", lines=3, interactive=False)
+            with gr.Column(scale=3):
+                raw = gr.Textbox(label="① 들어온 문장 — 음성이면 받아쓴 결과", lines=2, interactive=False)
+                plain = gr.Textbox(label="② 이대로 번역하면 — 보호 없음", lines=2, interactive=False)
+                marked = gr.HighlightedText(
+                    label="③ 보정 결과 — 색칠된 곳이 지켜낸 용어", combine_adjacent=False,
+                )
+                translated = gr.Textbox(label="④ 번역 — 용어 보호 적용", lines=2, interactive=False)
+
         table = gr.Dataframe(
             headers=["표준형", "말한 그대로", "찾은 방법", "신뢰도"],
             label="찾은 용어",
             interactive=False,
+            row_count=(2, "dynamic"),
         )
 
         # 순서는 view()가 돌려주는 순서와 같아야 한다 — 어긋나면 칸이 뒤바뀐다.
@@ -207,7 +217,8 @@ def main(argv: list[str] | None = None) -> int:
         audio.stop_recording(analyze, inputs=inputs, outputs=outputs)
         typed.submit(analyze, inputs=inputs, outputs=outputs)
 
-    demo.launch(share=args.share)
+    # css는 gradio 6부터 launch()로 넘긴다. 폭을 묶어야 좌우 두 열이 벌어지지 않는다.
+    demo.launch(share=args.share, css=".gradio-container{max-width:1240px !important}")
     return 0
 
 
