@@ -160,6 +160,18 @@ def test_non_hangul_forms_are_registered_because_fuzzy_cannot_reach_them(glossar
     assert "next.jpg" in glossary.get("Next.js").aliases
 
 
+def test_hangul_canonicals_carry_a_fixed_english_translation(glossary):
+    """표준형이 한글이면 고정 번역어가 있어야 한다.
+
+    번역 쪽은 보호한 용어를 표준형 그대로 되돌린다. 표준형이 영문이면 그게 이미
+    영어라 문제가 없지만, 한글이면 영어 문장 안에 한글이 그대로 남는다 —
+    "This week I only did 리팩터링". 고정 번역어가 그 자리를 채운다.
+    """
+    for term in glossary:
+        if any("가" <= c <= "힣" for c in term.canonical):
+            assert term.translations.get("en"), f"{term.canonical}에 en 번역어가 없다"
+
+
 def test_spaced_forms_are_registered_alongside_joined_ones(glossary):
     """STT가 긴 영어 용어 가운데 공백을 넣는 일이 반복된다.
 
