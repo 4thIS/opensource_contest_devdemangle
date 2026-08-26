@@ -64,7 +64,7 @@ def test_vue_short_form_stays_unregistered(glossary):
 
 
 # 2차 녹음에서 STT가 실제로 뱉은 문자열. 위 MEASURED와 나눠 두는 이유는 출처가
-# 달라서다 — 이쪽은 화자별로 정밀도가 갈린다(화자 A는 float16/GPU, B·C는 int8/CPU).
+# 달라서다 — 이쪽은 화자 셋 모두 large-v3 / float16 / CUDA 전사에서 왔다.
 # 어느 seed에서 나왔는지는 data/terms.yaml의 항목 주석에 적혀 있다.
 MEASURED_2CHA = [
     ("기터브", "GitHub"),
@@ -92,7 +92,7 @@ MEASURED_2CHA = [
     ("테라폼", "Terraform"),
     ("리팩토링", "리팩터링"),
     ("미드웨어", "미들웨어"),
-    ("미들 베어", "미들웨어"),
+    ("미들베어", "미들웨어"),
 ]
 
 
@@ -116,14 +116,17 @@ def test_django_keeps_the_letter_that_stt_left_behind(glossary):
 
 
 def test_kotlin_has_no_alias_on_purpose(glossary):
-    """Kotlin은 쓸 수 있는 별칭이 없어서 비어 있다 — 빠뜨린 게 아니다.
+    """Kotlin은 실측 형태 셋을 다 재보고 셋 다 못 써서 비어 있다 — 빠뜨린 게 아니다.
 
-    실측 형태 "코트를"은 조사를 떼면 옷("코트")이 되고 소리 키도 짧아 못 쓴다.
-    표준 음차 "코틀린"은 실측 전사 "커리는"(쿼리는)과 0.833이라 임계값으로 못 가른다.
-    되살리려면 근거가 하나 더 필요하다. 그전에 채우지 말 것.
+    "코트를"은 조사를 떼면 옷("코트")이 되고, 실제로 "코트를 옷장에 걸어놨어요"를
+    Kotlin으로 바꿔 놓는다. "코틀린"은 실측 전사 "커리는"(쿼리는)과 0.833이다.
+    "코틀리"는 낱말이 아니지만, 넣으면 Kotlin이 한글 별칭을 갖게 되면서 같은
+    "커리는"이 0.800으로 끌려온다 — 소리 비교는 한글 별칭끼리 하기 때문이다.
+    임계값이 0.81 위로 올라가면 "코틀리"는 그때 넣을 수 있다.
     """
     assert glossary.get("Kotlin").aliases == ()
     assert all("코틀린" not in t.aliases for t in glossary)
+    assert all("코트를" not in t.aliases for t in glossary)
 
 
 def test_pilot_and_plastic_stay_unregistered_but_that_does_not_block_them(glossary):
@@ -139,11 +142,22 @@ def test_pilot_and_plastic_stay_unregistered_but_that_does_not_block_them(glossa
 
 
 def test_truncated_form_stays_unregistered(glossary):
-    """"Swag"는 뒤가 통째로 잘린 형태라 등록하지 않는다.
+    """"Swag"는 등록하지 않는다 — 음성이 아니라 정밀도가 만든 형태였다.
 
-    되돌릴 근거가 표본 하나뿐인데 영어 낱말과 겹친다. 다시 재고 판단한다.
+    정밀도를 낮춰(int8/CPU) 돌렸을 때만 뒤가 잘렸고, 같은 음성의 float16 전사에서는
+    "Swagger"가 온전히 살아남았다. 영어 낱말과도 겹친다.
     """
     assert all("Swag" not in t.aliases for t in glossary)
+
+
+def test_non_hangul_forms_are_registered_because_fuzzy_cannot_reach_them(glossary):
+    """소리 탐지는 한글 덩어리만 후보로 보므로, 라틴 문자로 깨진 형태는 여기 없으면 못 잡는다.
+
+    셋 다 표준형을 hotwords로 넘긴 조건에서 나왔다 — 힌트를 줘도 이렇게 깨진다.
+    """
+    assert "Midware" in glossary.get("미들웨어").aliases
+    assert "Lada C" in glossary.get("lodash").aliases
+    assert "next.jpg" in glossary.get("Next.js").aliases
 
 
 def test_spaced_forms_are_registered_alongside_joined_ones(glossary):
