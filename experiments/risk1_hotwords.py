@@ -7,6 +7,8 @@ hotwords 없음 / 있음 두 조건에서 같은 오디오를 전사하고, 표�
 용법:
     uv run --extra cuda python experiments/risk1_hotwords.py
     uv run --extra cuda python experiments/risk1_hotwords.py --model medium   # VRAM 부족 시
+    uv run --extra cuda python experiments/risk1_hotwords.py \
+        --manifest experiments/audio/manifest_문장끝.yaml                     # 2차 정답지
 """
 
 import argparse
@@ -26,8 +28,8 @@ AUDIO_DIR = Path(__file__).parent / "audio"
 MANIFEST = AUDIO_DIR / "manifest.yaml"
 
 
-def load_manifest():
-    with open(MANIFEST, encoding="utf-8") as f:
+def load_manifest(path: Path = MANIFEST):
+    with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -132,9 +134,15 @@ def main():
     ap.add_argument(
         "--compute", default="float16", help="정밀도 (VRAM 부족 시 int8_float16)"
     )
+    ap.add_argument(
+        "--manifest",
+        type=Path,
+        default=MANIFEST,
+        help="정답지 (기본 1차 manifest.yaml). 차수가 다르면 섞지 말고 파일을 바꾼다",
+    )
     args = ap.parse_args()
 
-    entries = load_manifest()
+    entries = load_manifest(args.manifest)
     present = [e for e in entries if (AUDIO_DIR / e["file"]).exists()]
     speakers = sorted({e.get("speaker", "?") for e in present})
 
