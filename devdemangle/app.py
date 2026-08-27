@@ -217,8 +217,18 @@ def main(argv: list[str] | None = None) -> int:
         audio.stop_recording(analyze, inputs=inputs, outputs=outputs)
         typed.submit(analyze, inputs=inputs, outputs=outputs)
 
-    # css는 gradio 6부터 launch()로 넘긴다. 폭을 묶어야 좌우 두 열이 벌어지지 않는다.
-    demo.launch(share=args.share, css=".gradio-container{max-width:1240px !important}")
+    # css는 gradio 6부터 launch()로 넘긴다.
+    #
+    # 폭을 묶는 이유: 넓은 화면에서 두 열이 끝까지 벌어지면 ②와 ④가 멀어져 한눈에 비교가
+    # 안 된다. **묶을 때 margin을 auto로 같이 주지 않으면 가운데 정렬이 깨진다** —
+    # gradio의 컨테이너는 flex 자식이라, 폭만 제한하면 남는 공간이 전부 한쪽으로 몰린다.
+    demo.launch(
+        share=args.share,
+        css=(
+            ".gradio-container{"
+            "width:100% !important;max-width:1400px !important;margin-inline:auto !important}"
+        ),
+    )
     return 0
 
 
