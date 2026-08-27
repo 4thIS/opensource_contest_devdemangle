@@ -71,3 +71,6 @@ experiments/audio/*
 
 # superpowers 스킬 산출물은 저장소에 넣지 않는다.
 docs/superpowers/
+
+# 브라우저 자동화가 남기는 스냅샷·콘솔 로그. 화면 확인용이라 저장소에 넣지 않는다.
+.playwright-mcp/
