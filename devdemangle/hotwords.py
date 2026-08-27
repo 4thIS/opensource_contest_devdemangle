@@ -37,3 +37,20 @@ def build(glossary: Iterable[Term], *, budget: int = DEFAULT_BUDGET) -> str:
         used += cost
 
     return " ".join(selected)
+
+
+class WithoutHotwords:
+    """hotwords를 떼고 전사한다 (비교용).
+
+    파이프라인이 용어집에서 hotwords를 만들어 넘기므로, 끄려면 넘어온 값을
+    여기서 버린다. 파이프라인에 "끄기" 분기를 두지 않기 위한 것이다.
+
+    **시연에서 이게 필요하다.** hotwords를 켜면 STT가 용어를 이미 맞게 뱉어서
+    보정 단계가 무엇을 되돌렸는지 화면에 안 보인다.
+    """
+
+    def __init__(self, inner) -> None:
+        self._inner = inner
+
+    def transcribe(self, audio, hotwords: str | None = None) -> str:
+        return self._inner.transcribe(audio, hotwords=None)

@@ -52,11 +52,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"파일이 없습니다: {args.audio}", file=sys.stderr)
         return 1
 
+    from devdemangle.hotwords import WithoutHotwords
     from devdemangle.stt import WhisperSTT
 
     stt = WhisperSTT(model_size=args.model, device=args.device, compute_type=args.compute)
     if args.no_hotwords:
-        stt = _WithoutHotwords(stt)
+        stt = WithoutHotwords(stt)
 
     translator = None
     if args.translate:
@@ -67,20 +68,6 @@ def main(argv: list[str] | None = None) -> int:
 
     print(format_result(run(args.audio, stt=stt, translator=translator)))
     return 0
-
-
-class _WithoutHotwords:
-    """hotwords를 떼고 전사한다 (비교용).
-
-    파이프라인이 용어집에서 hotwords를 만들어 넘기므로, 끄려면 넘어온 값을
-    여기서 버린다. 파이프라인에 "끄기" 분기를 두지 않기 위한 것이다.
-    """
-
-    def __init__(self, inner) -> None:
-        self._inner = inner
-
-    def transcribe(self, audio, hotwords: str | None = None) -> str:
-        return self._inner.transcribe(audio, hotwords=None)
 
 
 if __name__ == "__main__":

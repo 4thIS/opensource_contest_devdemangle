@@ -62,14 +62,33 @@ def run(
         stt = WhisperSTT()
 
     raw = stt.transcribe(audio_path, hotwords=hotwords)
-    result = correct(raw, glossary, threshold=threshold)
+    return run_text(raw, glossary, translator, threshold=threshold)
+
+
+def run_text(
+    text: str,
+    glossary: Glossary | None = None,
+    translator: Translator | None = None,
+    *,
+    threshold: float = DEFAULT_THRESHOLD,
+) -> PipelineResult:
+    """이미 글자가 된 문장을 보정하고 (선택) 번역한다.
+
+    `run()`의 뒷부분이다. 음성을 거치지 않는 입구가 따로 필요해서 떼어 뒀다 —
+    명령행 플래그처럼 **소리로 받기 애매한 것**을 넣어볼 때 쓴다.
+
+    `raw`에는 들어온 문장을 그대로 담는다. 음성에서 왔든 손으로 쳤든
+    "보정 전에 무엇이었나"를 같은 자리에서 볼 수 있어야 한다.
+    """
+    terms = glossary if glossary is not None else default_glossary()
+    result = correct(text, glossary, threshold=threshold)
 
     if translator is None:
-        return PipelineResult(raw=raw, corrected=result.text, spans=result.spans)
+        return PipelineResult(raw=text, corrected=result.text, spans=result.spans)
 
     protected = translate_protected(result.text, result.spans, translator, terms)
     return PipelineResult(
-        raw=raw,
+        raw=text,
         corrected=result.text,
         spans=result.spans,
         translated=protected.text,
