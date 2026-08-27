@@ -296,3 +296,80 @@ glossary.translation_for("Vue", "ko")            # 'Vue'                  원문
 glossary.translation_for("의존성 주입", "en")     # 'dependency injection'  고정 번역어
 glossary.translation_for("모르는용어", "en")      # '모르는용어'             입력 그대로
 ```
+
+---
+
+## 13. 번역까지 한 번에
+
+`run()`에 번역기를 넘기면 **용어를 가린 채 번역하고 되돌린다.**
+
+```python
+from devdemangle import run
+from devdemangle.translate.opusmt import OpusMTTranslator
+
+result = run("meeting.wav", translator=OpusMTTranslator())
+
+result.corrected   # '간단한 건 Flask으로 충분해요'
+result.translated  # 'A simple one is enough for Flask.'
+result.lost        # []   번역이 삼켜서 되돌리지 못한 용어
+```
+
+가리지 않고 그대로 번역하면 이렇게 된다.
+
+```python
+OpusMTTranslator().translate(result.corrected)
+# "It's enough for Plask to be simple."      Flask → Plask
+```
+
+**같은 모델에 같은 문장을 넣고 가렸는지만 다르다.** 다른 번역기와 비교하면 차이가
+보호 때문인지 모델 때문인지 갈라낼 수 없다.
+
+`lost`가 비어 있지 않으면 번역기가 플레이스홀더 자체를 변형한 것이다. 실측 64문장에서
+1건 나왔다.
+
+---
+
+## 14. 음성 없이 문장만
+
+`run_text()`는 `run()`의 뒷부분이다. **오디오를 거치지 않는다.**
+
+```python
+from devdemangle.pipeline import run_text
+
+result = run_text("빌드할 때 --no-cache 붙여서 돌려보세요")
+
+result.raw        # 들어온 문장 그대로
+result.corrected  # 같음 — 미등록 식별자는 고치지 않는다
+[(s.term, str(s.method)) for s in result.spans]
+# [('--no-cache', 'regex')]
+```
+
+명령행 플래그처럼 **소리로 전달하기 애매한 것**을 확인할 때 쓴다. 용어집과 임계값,
+번역기도 `run()`과 같은 방식으로 넘긴다.
+
+```python
+run_text("닷커 컨테이너", glossary, threshold=0.70).corrected   # 'Docker 컨테이너'
+```
+
+---
+
+## 15. 데모 앱
+
+```bash
+uv sync --extra demo --extra cuda --extra translate
+uv run python -m devdemangle.app
+```
+
+`http://127.0.0.1:7860`에서 마이크·파일·문장 입력을 받아 네 칸으로 보여준다.
+
+```
+① 들어온 문장      ② 이대로 번역하면 (보호 없음)
+③ 보정 결과        ④ 번역 (보호 적용)
+```
+
+`--no-hotwords`를 붙이면 용어집을 인식 힌트로 넘기지 않는다. **보정 단계가 혼자
+무엇을 되돌리는지 보려면 이쪽이다.**
+
+```bash
+uv run python -m devdemangle.app --no-hotwords
+```
