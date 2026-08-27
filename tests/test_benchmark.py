@@ -100,3 +100,69 @@ def test_survived_does_not_count_a_mangled_term():
 def test_survived_ignores_case():
     """전사가 'sql'로 뱉어도 SQL은 살아남은 것이다 — 대소문자는 깨짐이 아니다."""
     assert survived("sql 문을 수정해야 합니다", ["SQL"]) == 1
+
+
+from eval.benchmark import run_stages
+from devdemangle.glossary import Glossary
+from devdemangle.types import Term
+
+_G = Glossary([Term(canonical="Docker", aliases=("도커",))])
+_RECORDS = [
+    # off = 힌트 없이 전사(깨짐) / on = 힌트 켜고 전사(살아남음)
+    {"off": "도커 씁니다", "on": "Docker 씁니다", "terms": ["Docker"]},
+    {"off": "도커 올려요", "on": "도커 올려요", "terms": ["Docker"]},
+]
+
+
+def test_run_stages_reports_all_four_conditions():
+    """힌트와 보정은 **서로 독립인 두 축**이다. 넷을 다 내야 표가 오해를 안 만든다.
+
+    셋만 내면 "힌트 위에 보정을 얹은 값"으로 읽히는데, 실제로는 힌트를 뺀 값이었다.
+    """
+    stages = run_stages(_RECORDS, _G, threshold=0.78)
+    assert set(stages) == {
+        ("힌트 없음", "보정 없음"),
+        ("힌트 적용", "보정 없음"),
+        ("힌트 없음", "보정 적용"),
+        ("힌트 적용", "보정 적용"),
+    }
+
+
+def test_run_stages_counts_hotwords_axis():
+    stages = run_stages(_RECORDS, _G, threshold=0.78)
+    assert stages[("힌트 없음", "보정 없음")] == (0, 2)   # 둘 다 "도커"로 깨짐
+    assert stages[("힌트 적용", "보정 없음")] == (1, 2)   # 하나만 살아남음
+
+
+def test_run_stages_counts_correction_axis():
+    """보정은 힌트가 있든 없든 걸린다 — 축이 독립이라는 것이 표의 전제다."""
+    stages = run_stages(_RECORDS, _G, threshold=0.78)
+    assert stages[("힌트 없음", "보정 적용")] == (2, 2)
+    assert stages[("힌트 적용", "보정 적용")] == (2, 2)
+
+
+from eval.benchmark import brief_table
+
+
+def test_brief_table_is_short_enough_for_a_screen():
+    """시연에서 터미널을 찍는다. 스크롤이 생기면 표가 화면 밖으로 나간다."""
+    lines = brief_table(_RECORDS, _G, threshold=0.78).splitlines()
+    assert len(lines) <= 10
+
+
+def test_brief_table_shows_all_four_conditions():
+    text = brief_table(_RECORDS, _G, threshold=0.78)
+    for cell in ("0.0%", "50.0%", "100.0%"):
+        assert cell in text
+    assert "힌트 없음" in text and "힌트 적용" in text
+    assert "보정 없음" in text and "보정 적용" in text
+
+
+def test_brief_table_states_where_the_glossary_came_from():
+    """숫자만 보이면 처음 보는 음성에서도 이만큼 나온다는 뜻으로 읽힌다."""
+    assert "용어집" in brief_table(_RECORDS, _G, threshold=0.78)
+
+
+def test_brief_table_has_no_markdown_pipes():
+    """터미널에 띄울 것이라 표 기호가 없어야 읽힌다."""
+    assert "|" not in brief_table(_RECORDS, _G, threshold=0.78)

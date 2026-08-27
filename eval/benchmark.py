@@ -116,6 +116,34 @@ def survived(text: str, terms: list[str]) -> int:
     return sum(1 for t in terms if t.lower() in low)
 
 
+def brief_table(records: list[dict], glossary, threshold: float = DEFAULT_THRESHOLD) -> str:
+    """시연에서 화면에 띄울 짧은 표.
+
+    전체 보고서는 50줄이 넘어 터미널 한 화면에 안 들어간다. 촬영 중 스크롤이 생기면
+    표가 화면 밖으로 나가므로, **전체 표본 2×2만** 남긴다.
+
+    마크다운 기호를 쓰지 않는다. 터미널에서는 `|`가 읽기를 방해한다.
+    """
+    st = run_stages(records, glossary, threshold)
+    total = sum(len(r["terms"]) for r in records)
+
+    def cell(hot: str, fix: str) -> str:
+        part, whole = st[(hot, fix)]
+        return f"{part / whole * 100:.1f}%" if whole else "—"
+
+    lines = [
+        f"용어가 살아남은 비율 — 문장 {len(records)}건 · 용어 {total}회",
+        "",
+        f"{'':10}{'보정 없음':>10}{'보정 적용':>12}",
+    ]
+    for hot in ("힌트 없음", "힌트 적용"):
+        lines.append(
+            f"{hot:10}{cell(hot, '보정 없음'):>12}{cell(hot, '보정 적용'):>14}"
+        )
+    lines += ["", "용어집은 이 녹음의 실측 전사에서 구축"]
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------- 실행부
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -146,22 +174,33 @@ def run_fixtures(items: list[dict], glossary, threshold: float) -> list[tuple[di
     return scored
 
 
-def run_stages(records: list[dict], glossary, threshold: float) -> dict[str, tuple[int, int]]:
-    """3단계 비교 — 각 단계에서 용어가 몇 개나 살아남았나.
+def run_stages(
+    records: list[dict], glossary, threshold: float
+) -> dict[tuple[str, str], tuple[int, int]]:
+    """네 조건에서 용어가 몇 개나 살아남았나. 넷이 **같은 음성·같은 정답지**를 쓴다.
 
-    셋이 **같은 음성·같은 정답지**를 쓴다. 단계마다 표본이 다르면 비교가 성립하지 않는다.
+    **힌트(hotwords)와 보정은 서로 독립인 두 축이다.** 셋만 내면 표가 계단처럼 보여서
+    "힌트 위에 보정을 얹은 값"으로 읽히는데, 그 자리에 있던 값은 힌트를 **뺀** 값이었다.
+    넷을 다 내면 가로로 보정의 효과, 세로로 힌트의 효과가 각각 읽힌다.
+
+    반환 키는 `(힌트, 보정)` 쌍이라 2×2로 그대로 펼칠 수 있다.
     """
     total = sum(len(r["terms"]) for r in records)
-    stt = sum(survived(r["off"], r["terms"]) for r in records)
-    hot = sum(survived(r["on"], r["terms"]) for r in records)
-    fixed = sum(
-        survived(correct(r["off"], glossary, threshold=threshold).text, r["terms"])
-        for r in records
-    )
+
+    def count(key: str, fix: bool) -> tuple[int, int]:
+        got = 0
+        for r in records:
+            text = r[key]
+            if fix:
+                text = correct(text, glossary, threshold=threshold).text
+            got += survived(text, r["terms"])
+        return got, total
+
     return {
-        "STT만": (stt, total),
-        "STT + hotwords": (hot, total),
-        "STT + 보정 (hotwords 없이)": (fixed, total),
+        ("힌트 없음", "보정 없음"): count("off", False),
+        ("힌트 적용", "보정 없음"): count("on", False),
+        ("힌트 없음", "보정 적용"): count("off", True),
+        ("힌트 적용", "보정 적용"): count("on", True),
     }
 
 
@@ -176,14 +215,30 @@ def _fmt(value: float | None) -> str:
 def main(argv: list[str] | None = None) -> int:
     import argparse
     import subprocess
+    import sys
 
     parser = argparse.ArgumentParser(description="DevDemangle 평가 하니스")
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     parser.add_argument("--fixtures", type=Path, default=FIXTURE_DIR)
-    parser.add_argument("--date", required=True, help="측정일 YYYY-MM-DD (추이 기록용)")
+    parser.add_argument("--date", help="측정일 YYYY-MM-DD (추이 기록용)")
+    parser.add_argument(
+        "--brief",
+        action="store_true",
+        help="전체 표본 2×2만 화면에 띄운다. 시연 촬영용 — 파일은 쓰지 않는다",
+    )
     args = parser.parse_args(argv)
 
     glossary = default_glossary()
+
+    if args.brief:
+        records = json.loads(TRANSCRIPTS.read_text(encoding="utf-8"))
+        print(brief_table(records, glossary, args.threshold))
+        return 0
+
+    if not args.date:
+        print("--date 가 필요합니다 (또는 --brief)", file=sys.stderr)
+        return 1
+
     try:
         commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
                                 capture_output=True, text=True, check=True).stdout.strip()
@@ -212,11 +267,21 @@ def main(argv: list[str] | None = None) -> int:
     groups = [("전체", records)] + [(s, [r for r in records if r["set"] == s]) for s in sets]
 
     out += [f"문장 {len(records)}건 · 용어 등장 {sum(len(r['terms']) for r in records)}회", "",
-            "| 표본 | 문장 | STT만 | + hotwords | + 보정 |", "|---|---|---|---|---|"]
+            "**힌트와 보정은 서로 독립인 두 축이다.** 가로로 읽으면 보정의 효과,",
+            "세로로 읽으면 인식 힌트의 효과다. 계단이 아니다.", ""]
+
     for label, group in groups:
         st = run_stages(group, glossary, args.threshold)
-        cells = " | ".join(_pct(p_, w) for p_, w in st.values())
-        out.append(f"| {label} | {len(group)} | {cells} |")
+        out += [f"### {label} — 문장 {len(group)}건", "",
+                "| | 보정 없음 | 보정 적용 |", "|---|---|---|"]
+        for hot in ("힌트 없음", "힌트 적용"):
+            cells = " | ".join(_pct(*st[(hot, fix)]) for fix in ("보정 없음", "보정 적용"))
+            out.append(f"| **{hot}** | {cells} |")
+        out.append("")
+
+    out += ["> **용어집은 이 코퍼스의 실측 전사에서 만들었다.** 녹음에서 나온 표기를",
+            "> 별칭으로 등록한 뒤 같은 녹음으로 잰 값이므로, 처음 보는 음성에 대한",
+            "> 일반화 성능이 아니다. 그 값은 아직 재지 않았다.", ""]
 
     out += ["", "## 2. 픽스처", ""]
     if not args.fixtures.is_dir():
